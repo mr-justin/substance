@@ -12,6 +12,7 @@ var EventEmitter = require('../../util/EventEmitter');
 
   @class Data
   @extends util/EventEmitter
+  @private
  */
 
 /**
