@@ -7,6 +7,14 @@ var $$ = Component.$$;
 var Panel = require("./Panel");
 var Scrollbar = require("./Scrollbar");
 
+/**
+  Scrollable content Panel with support for highlights.
+  
+  @class
+  @component
+  @extends ui/Panel
+*/
+
 function ContentPanel() {
   Panel.apply(this, arguments);
 

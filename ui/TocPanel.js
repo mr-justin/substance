@@ -6,6 +6,14 @@ var Panel = require('./Panel');
 var $$ = Component.$$;
 var Icon = require('./FontAwesomeIcon');
 
+/**
+  Table of contents panel.
+  
+  @class
+  @component
+  @extends ui/Panel
+*/
+
 function TOCPanel() {
   Component.apply(this, arguments);
 
