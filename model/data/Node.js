@@ -15,13 +15,13 @@ var EventEmitter = require('../../util/EventEmitter');
 /**
   Base node implementation.
 
+  @private
   @class Node
   @node
   @extends EventEmitter
   @param {Object} properties
 
   @prop {String} id an id that is unique within this data
-
  */
 function Node(props) {
   EventEmitter.call(this);
@@ -33,10 +33,9 @@ function Node(props) {
   }
 
   each(NodeClass.static.schema, function(prop, name) {
-    // check integrity
-    // TODO: more! e.g. type check
-    // mandatory properties
-    var propIsGiven = props.hasOwnProperty(name);
+    // check integrity of provided props, such as type correctness,
+    // and mandatory properties
+    var propIsGiven = (props[name] !== undefined);
     var hasDefault = prop.hasOwnProperty('default');
     var isOptional = prop.optional;
     if ( (!isOptional && !hasDefault) && !propIsGiven) {
@@ -241,6 +240,12 @@ function _checked(prop, value) {
     type = "array";
   } else {
     type = prop.type;
+  }
+  if (value === null) {
+    throw new Error('Value for property ' + prop.name + ' is null.');
+  }
+  if (value === undefined) {
+    throw new Error('Value for property ' + prop.name + ' is undefined.');
   }
   if (type === "string" && !isString(value) ||
       type === "boolean" && !isBoolean(value) ||

@@ -1,6 +1,5 @@
 'use strict';
 
-var oo = require('../../util/oo');
 var Node = require('../../model/DocumentNode');
 var MemberContainerMixin = require('./MemberContainerMixin');
 
@@ -10,11 +9,11 @@ var MemberContainerMixin = require('./MemberContainerMixin');
 // - model/transform
 // - ui
 
-var MEMBER_CATEGORIES = [
-  {name: 'modules', path: ['module']},
-  {name: 'classes', path: ['class']},
-  {name: 'functions', path: ['function']},
-];
+var MEMBER_CATEGORIES = {
+  'modules': {name: 'modules', path: ['module']},
+  'classes': {name: 'classes', path: ['class']},
+  'functions': {name: 'functions', path: ['function']},
+};
 
 function NamespaceNode() {
   NamespaceNode.super.apply(this, arguments);
@@ -36,8 +35,7 @@ NamespaceNode.Prototype = function() {
 
 };
 
-oo.inherit(NamespaceNode, Node);
-oo.mixin(NamespaceNode, MemberContainerMixin);
+Node.extend(NamespaceNode, MemberContainerMixin);
 
 NamespaceNode.static.name = 'namespace';
 

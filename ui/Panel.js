@@ -1,7 +1,6 @@
 'use strict';
 
 var $ = require('../util/jquery');
-var oo = require('../util/oo');
 var Component = require('./Component');
 var $$ = Component.$$;
 
@@ -10,16 +9,23 @@ function Panel() {
 }
 
 Panel.Prototype = function() {
-
-  // This method must be overriden with your panel implementation
   this.render = function() {
-    return $$("div")
-      .addClass("sc-panel sc-my-panel")
-      .append(
-        $$('div')
-          .addClass('se-panel-content')
-          .append('YOUR_PANEL_CONTENT')
-      );
+    var el = $$('div')
+      .addClass('sc-panel');
+    el.append(
+      $$('div').ref("panelContent").addClass('se-panel-content')
+        .append(
+          $$('div').addClass('se-panel-content-inner').append(
+            this.props.children
+          )
+        )
+        .on('scroll', this.onScroll)
+    );
+    return el;
+  };
+
+  this.onScroll = function(e) {
+    /* jshint unused:false */
   };
 
   this.getController = function() {
@@ -101,6 +107,6 @@ Panel.Prototype = function() {
   };
 };
 
-oo.inherit(Panel, Component);
+Component.extend(Panel);
 
 module.exports = Panel;

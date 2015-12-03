@@ -1,6 +1,5 @@
 'use strict';
 
-var oo = require('../../util/oo');
 var Node = require('../../model/DocumentNode');
 
 function DocumentedNode() {
@@ -20,7 +19,7 @@ DocumentedNode.Prototype = function() {
 
 };
 
-oo.inherit(DocumentedNode, Node);
+Node.extend(DocumentedNode);
 
 DocumentedNode.static.name = 'source-code';
 
@@ -29,6 +28,7 @@ DocumentedNode.static.defineSchema({
   example: { type: 'string', optional: true }, // HTML
   sourceFile: 'string', // ui/Component.js
   sourceLine: 'number',
+  isPrivate: { type: 'boolean', default: false },
   tags: { type: ['array', 'object'], default: [] }, // [ { name: 'type', string: '...', html: '...'}]
 });
 

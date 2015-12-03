@@ -1,9 +1,7 @@
 'use strict';
 
-var oo = require('../util/oo');
 var _ = require('../util/helpers');
 var Component = require('./Component');
-var Clipboard = require('./Clipboard');
 var ToolManager = require('./ToolManager');
 var Registry = require('../util/Registry');
 var Logger = require ('../util/Logger');
@@ -98,8 +96,10 @@ function Controller() {
   var config = this.getConfig();
   this._initializeComponentRegistry(config.controller.components);
   this._initializeCommandRegistry(config.controller.commands);
-  this.clipboard = new Clipboard(this, this.props.doc.getClipboardImporter(), this.props.doc.getClipboardExporter());
 
+  if (config.i18n) {
+    I18n.instance.load(config.i18n);
+  }
   /**
    * Manages tools.
    *
@@ -114,8 +114,6 @@ Controller.Prototype = function() {
 
   this.didMount = function() {
     this.$el.on('keydown', this.handleApplicationKeyCombos);
-    // Attach clipboard
-    this.clipboard.attach(this.$el[0]);
   };
 
   /**
@@ -131,7 +129,6 @@ Controller.Prototype = function() {
 
   this._dispose = function() {
     this.props.doc.disconnect(this);
-    this.clipboard.detach(this.$el[0]);
   };
 
   this.willReceiveProps = function(newProps) {
@@ -242,10 +239,6 @@ Controller.Prototype = function() {
 
   this.getLogger = function() {
     return this.logger;
-  };
-
-  this.getClipboard = function() {
-    return this.clipboard;
   };
 
   /**
@@ -361,10 +354,13 @@ Controller.Prototype = function() {
   // avoid confusion
   this.transaction = function() {
     var surface = this.getFocusedSurface();
-    if (!surface) {
-      throw new Error('No focused surface!');
+    if (surface) {
+      surface.transaction.apply(surface, arguments);
+    } else {
+      // No focused surface, let's do it on document
+      this.props.doc.transaction.apply(this.props.doc, arguments);
     }
-    surface.transaction.apply(surface, arguments);
+    
   };
 
   // FIXME: even if this seems to be very hacky,
@@ -524,17 +520,6 @@ Controller.Prototype = function() {
   };
 };
 
-/**
-  Controller static method. This is just to test documentation
-
-  @param {String} a a string
-  @param {String} b another string
-  @static
-  @return {String} The result of the static method
-*/
-Controller.concatStrings = function(a, b) {
-  return a.concat(b);
-};
 
 /**
   Emitted after a command has been executed. Since we did not allow command
@@ -587,5 +572,5 @@ Controller.concatStrings = function(a, b) {
   @event ui/Controller@document:saved
 */
 
-oo.inherit(Controller, Component);
+Component.extend(Controller);
 module.exports = Controller;

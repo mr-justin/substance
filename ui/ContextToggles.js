@@ -2,7 +2,6 @@
 
 var $ = require('../util/jquery');
 var _ = require('../util/helpers');
-var oo = require('../util/oo');
 
 var Component = require('./Component');
 var $$ = Component.$$;
@@ -14,8 +13,11 @@ function ContextToggles() {
 ContextToggles.Prototype = function() {
 
   this.render = function() {
-    var panelOrder = this.props.panelOrder;
-    var contextId = this.props.contextId;
+    // TODO: this should be less bound to the app context!
+    var config = this.context.config;
+    var parentState = this.context.controller.state;
+    var panelOrder = config.panelOrder;
+    var contextId = parentState.contextId;
 
     var el = $$('div').addClass("sc-context-toggles");
     _.each(panelOrder, function(panelId) {
@@ -44,6 +46,6 @@ ContextToggles.Prototype = function() {
   };
 };
 
-oo.inherit(ContextToggles, Component);
+Component.extend(ContextToggles);
 
 module.exports = ContextToggles;

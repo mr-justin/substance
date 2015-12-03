@@ -2,15 +2,13 @@
 
 var each = require('lodash/collection/each');
 var AbstractDocument = require('./AbstractDocument');
-var NodeIndex = require('./data/NodeIndex');
+var DocumentIndex = require('./DocumentIndex');
 var AnnotationIndex = require('./AnnotationIndex');
 var AnchorIndex = require('./AnchorIndex');
 
 var TransactionDocument = require('./TransactionDocument');
 
 var PathEventProxy = require('./PathEventProxy');
-var ClipboardImporter = require('./ClipboardImporter');
-var ClipboardExporter = require('./ClipboardExporter');
 
 var __id__ = 0;
 
@@ -22,12 +20,12 @@ var __id__ = 0;
   @abstract
   @extends model/AbstractDocument
   @example
-  
+
   ```js
   var Document = require('substance/model/Document');
   var articleSchema = require('./myArticleSchema');
   var Article = function() {
-    Document.call(articleSchema);
+    Article.super.call(articleSchema);
 
     // We set up a container that holds references to
     // block nodes (e.g. paragraphs and figures)
@@ -38,13 +36,13 @@ var __id__ = 0;
     });
   };
 
-  OO.inherit(Article, Document);
+  Document.extend(Article);
   ```
 */
 
 /**
   @constructor Document
-  @param {model/Schema} schema The document schema.
+  @param {DocumentSchema} schema The document schema.
 */
 
 function Document(schema) {
@@ -52,7 +50,7 @@ function Document(schema) {
   this.__id__ = __id__++;
 
   // all by type
-  this.addIndex('type', NodeIndex.create({
+  this.addIndex('type', DocumentIndex.create({
     property: "type"
   }));
 
@@ -86,51 +84,14 @@ function Document(schema) {
 
   this.FORCE_TRANSACTIONS = false;
 
-  // Note: using the general event queue (as opposed to calling updateEventProxies from within _notifyChangeListeners)
+  // Note: using the general event queue (as opposed to calling _updateEventProxies from within _notifyChangeListeners)
   // so that handler priorities are considered correctly
   this.connect(this, {
-    'document:changed': this.updateEventProxies
+    'document:changed': this._updateEventProxies
   });
 }
 
 Document.Prototype = function() {
-
-  this.isTransaction = function() {
-    return false;
-  };
-
-  this.newInstance = function() {
-    var DocumentClass = this.constructor;
-    return new DocumentClass(this.schema);
-  };
-
-  this.fromSnapshot = function(data) {
-    var doc = this.newInstance();
-    doc.loadSeed(data);
-    return doc;
-  };
-
-  this.documentDidLoad = function() {
-    // HACK: need to reset the stage
-    this.stage.reset();
-    this.done = [];
-    // do not allow non-transactional changes after that
-    this.FORCE_TRANSACTIONS = true;
-  };
-
-  this.clear = function() {
-    var self = this;
-    this.transaction(function(tx) {
-      each(self.data.nodes, function(node) {
-        tx.delete(node.id);
-      });
-    });
-    this.documentDidLoad();
-  };
-
-  this.getEventProxy = function(name) {
-    return this.eventProxies[name];
-  };
 
   // Document manipulation
   //
@@ -202,32 +163,15 @@ Document.Prototype = function() {
   */
   this.import = function(importer) {
     try {
-      this.data.stopIndexing();
+      this.data._stopIndexing();
       importer(this);
-      this.data.startIndexing();
+      this.data._startIndexing();
     } finally {
       this.data.queue = [];
-      this.data.startIndexing();
+      this.data._startIndexing();
     }
   };
 
-  /**
-    Creates a new {@link model/DocumentNode}. Use this API on a {@link model/TransactionDocument} to ensure consistency.
-
-    @param {Object} nodeData
-
-    @example
-
-    ```js
-    doc.transaction(function(tx) {
-      tx.create({
-        id: 'p1',
-        type: 'paragraph',
-        content: 'Hi I am a Substance paragraph.'
-      });
-    });
-    ```
-  */
   this.create = function(nodeData) {
     if (this.FORCE_TRANSACTIONS) {
       throw new Error('Use a transaction!');
@@ -243,19 +187,6 @@ Document.Prototype = function() {
     return this.data.get(nodeData.id);
   };
 
-  /**
-    Removes a node with given nodeId.
-
-    @param {String} nodeId
-
-    @example
-
-    ```js
-    doc.transaction(function(tx) {
-      tx.delete('p1');
-    });
-    ```
-  */
   this.delete = function(nodeId) {
     if (this.FORCE_TRANSACTIONS) {
       throw new Error('Use a transaction!');
@@ -270,20 +201,6 @@ Document.Prototype = function() {
     }
   };
 
-  /**
-    Set a node's property to a new value.
-
-    @param {Array} path
-    @param {String} value
-
-    @example
-
-    ```js
-    doc.transaction(function(tx) {
-      tx.set(['p1', 'content'], "Hello there! I'm a new paragraph.");
-    });
-    ```
-  */
   this.set = function(path, value) {
     if (this.FORCE_TRANSACTIONS) {
       throw new Error('Use a transaction!');
@@ -336,16 +253,45 @@ Document.Prototype = function() {
     }
   };
 
+  this.getEventProxy = function(name) {
+    return this.eventProxies[name];
+  };
+
+  this.isTransaction = function() {
+    return false;
+  };
+
+  this.newInstance = function() {
+    var DocumentClass = this.constructor;
+    return new DocumentClass(this.schema);
+  };
+
+  this.fromSnapshot = function(data) {
+    var doc = this.newInstance();
+    doc.loadSeed(data);
+    return doc;
+  };
+
+  this.documentDidLoad = function() {
+    // HACK: need to reset the stage
+    this.stage.reset();
+    this.done = [];
+    // do not allow non-transactional changes after that
+    this.FORCE_TRANSACTIONS = true;
+  };
+
+  this.clear = function() {
+    var self = this;
+    this.transaction(function(tx) {
+      each(self.data.nodes, function(node) {
+        tx.delete(node.id);
+      });
+    });
+    this.documentDidLoad();
+  };
+
   this.getDocumentMeta = function() {
     return this.get('document');
-  };
-
-  this.getClipboardImporter = function() {
-    return new ClipboardImporter({ schema: this.getSchema()});
-  };
-
-  this.getClipboardExporter = function() {
-    return new ClipboardExporter();
   };
 
   this.getHighlights = function() {
@@ -375,20 +321,6 @@ Document.Prototype = function() {
     this.emit('highlights:updated', highlights);
   };
 
-  /**
-   * Enable or disable auto-attaching of nodes.
-   * When this is enabled (default), a created node
-   * gets attached to the document instantly.
-   * Otherwise you need to take care of that yourself.
-   *
-   * Used internally e.g., by AbstractDocument.prototype.loadSeed()
-   * @private
-   */
-  this._setAutoAttach = function(val) {
-    Document.super.prototype._setAutoAttach.call(this, val);
-    this.stage._setAutoAttach(val);
-  };
-
   this._apply = function(documentChange, mode) {
     if (mode !== 'saveTransaction') {
       if (this.isTransacting) {
@@ -409,7 +341,7 @@ Document.Prototype = function() {
     this.emit('document:changed', documentChange, info, this);
   };
 
-  this.updateEventProxies = function(documentChange, info) {
+  this._updateEventProxies = function(documentChange, info) {
     each(this.eventProxies, function(proxy) {
       proxy.onDocumentChanged(documentChange, info, this);
     }, this);

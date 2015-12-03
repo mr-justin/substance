@@ -1,12 +1,10 @@
 'use strict';
 
 var _ = require('../util/helpers');
-
-var oo = require('../util/oo');
+var extend = require('lodash/object/extend');
 var Controller = require("../ui/Controller");
-var Component = require('../ui/Component');
-var $$ = Component.$$;
 var Router = require('../ui/Router');
+var omit = require('lodash/object/omit');
 
 // Substance is i18n ready, but by now we did not need it
 // Thus, we configure I18n statically as opposed to loading
@@ -31,6 +29,21 @@ function DocumentationController(parent, params) {
 }
 
 DocumentationController.Prototype = function() {
+
+  var _super = DocumentationController.super.prototype;
+
+  this._panelPropsFromState = function() {
+    var props = omit(this.state, 'contextId');
+    props.doc = this.getDocument();
+    return props;
+  };
+
+  this.setState = function(newState) {
+    if (!newState.contextId) {
+      newState = extend({}, this.getInitialState(), newState);
+    }
+    _super.setState.call(this, newState);
+  };
 
   this.focusNode = function(nodeId) {
     this.extendState({
@@ -86,33 +99,6 @@ DocumentationController.Prototype = function() {
     surface.rerenderDomSelection();
   };
 
-  // Pass writer start
-  this._panelPropsFromState = function (state) {
-    var props = _.omit(state, 'contextId');
-    props.doc = this.props.doc;
-    return props;
-  };
-
-  this.getActivePanelElement = function() {
-    var ComponentClass = this.componentRegistry.get(this.state.contextId);
-    if (ComponentClass) {
-      // I set ref to the current contextId so we don't run into #173
-      return $$(ComponentClass, this._panelPropsFromState(this.state)).ref(this.state.contextId);
-    } else {
-      console.warn("Could not find component for contextId:", this.state.contextId);
-    }
-  };
-
-  this.renderContextPanel = function() {
-    var panelElement = this.getActivePanelElement();
-    if (!panelElement) {
-      return $$('div').append('No panels are registered');
-    } else {
-      return panelElement;
-    }
-  };
-
-
   // Hande Writer state change updates
   // --------------
   //
@@ -139,6 +125,6 @@ DocumentationController.Prototype = function() {
 
 };
 
-oo.inherit(DocumentationController, Controller);
+Controller.extend(DocumentationController);
 
 module.exports = DocumentationController;

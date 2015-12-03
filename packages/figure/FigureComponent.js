@@ -1,15 +1,26 @@
 'use strict';
 
-var oo = require('../../util/oo');
 var Component = require('../../ui/Component');
 var TextProperty = require('../../ui/TextPropertyComponent');
 var $$ = Component.$$;
 
 function FigureComponent() {
   Component.apply(this, arguments);
+
+  this.props.node.connect(this, {
+    "label:changed": this.onLabelChanged
+  });
 }
 
 FigureComponent.Prototype = function() {
+
+  this.dispose = function() {
+    this.props.node.disconnect(this);
+  };
+
+  this.onLabelChanged = function() {
+    this.rerender();
+  };
 
   this.render = function() {
     var componentRegistry = this.context.componentRegistry;
@@ -54,6 +65,6 @@ FigureComponent.Prototype = function() {
   };
 };
 
-oo.inherit(FigureComponent, Component);
+Component.extend(FigureComponent);
 
 module.exports = FigureComponent;

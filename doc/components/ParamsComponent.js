@@ -1,6 +1,5 @@
 'use strict';
 
-var oo = require('../../util/oo');
 var Component = require('../../ui/Component');
 var $$ = Component.$$;
 
@@ -24,7 +23,7 @@ ParamsComponent.Prototype = function() {
         paramsTable.append(
           $$('tr').addClass('se-param').append(
             $$('td').addClass('se-param-name').append(param.name),
-            $$('td').addClass('se-param-type').append($$(CrossLink, {nodeId: param.type})),
+            $$('td').addClass('se-param-type').append($$(CrossLink, {nodeId: param.type}).append(param.shortType)),
             $$('td').addClass('se-param-description').html(param.description)
           )
         );
@@ -46,5 +45,5 @@ ParamsComponent.Prototype = function() {
   };
 };
 
-oo.inherit(ParamsComponent, Component);
+Component.extend(ParamsComponent);
 module.exports = ParamsComponent;

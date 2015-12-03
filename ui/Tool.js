@@ -1,6 +1,5 @@
 'use strict';
 
-var oo = require('../util/oo');
 var Component = require('./Component');
 var _ = require('../util/helpers');
 var $$ = Component.$$;
@@ -58,6 +57,7 @@ Tool.Prototype = function() {
 
   this.onClick = function(e) {
     e.preventDefault();
+    e.stopPropagation();
     if (this.state.disabled) {
       return;
     }
@@ -93,5 +93,5 @@ Tool.Prototype = function() {
   };
 };
 
-oo.inherit(Tool, Component);
+Component.extend(Tool);
 module.exports = Tool;

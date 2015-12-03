@@ -1,7 +1,6 @@
 'use strict';
 
 var $ = require('../util/jquery');
-var oo = require('../util/oo');
 var Component = require('./Component');
 var $$ = Component.$$;
 
@@ -88,7 +87,7 @@ Scrollbar.Prototype = function() {
     if (this.props.highlights) {
       // Compute highlights
       this.props.highlights.forEach(function(nodeId) {
-        var nodeEl = $(panelContentEl).find('*[data-id='+nodeId+']');
+        var nodeEl = $(panelContentEl).find('*[data-id="'+nodeId+'"]');
         if (!nodeEl.length) return;
         var top = nodeEl.position().top / this.factor;
         var height = nodeEl.outerHeight(true) / this.factor;
@@ -165,7 +164,7 @@ Scrollbar.Prototype = function() {
   };
 };
 
-oo.inherit(Scrollbar, Component);
+Component.extend(Scrollbar);
 Scrollbar.overlayMinHeight = 2;
 
 module.exports = Scrollbar;

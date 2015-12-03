@@ -3,10 +3,10 @@
 var isFunction = require('lodash/lang/isFunction');
 var isString = require('lodash/lang/isString');
 var isArray = require('lodash/lang/isArray');
+var cloneDeep = require('lodash/lang/cloneDeep');
 var extend = require('lodash/object/extend');
 var omit = require('lodash/object/omit');
 var without = require('lodash/array/without');
-var oo = require('../util/oo');
 var DOMElement = require('./DOMElement');
 
 /**
@@ -133,6 +133,14 @@ VirtualDOMElement.Prototype = function() {
     return this;
   };
 
+  this.getId = function() {
+    return this.getAttribute('id');
+  };
+
+  this.setId = function(id) {
+    return this.setAttribute('id', id);
+  };
+
   this.getTextContent = function() {
     // TODO: we could traverse children directly, and just collecting text nodes
     var el = this._compile();
@@ -190,6 +198,32 @@ VirtualDOMElement.Prototype = function() {
 
   this.isCommentNode = function() {
     return false;
+  };
+
+  this.isDocumentNode = function() {
+    return false;
+  };
+
+  this.createElement = function(str) {
+    return VirtualDOMElement.createElement(str);
+  };
+
+  this.clone = function() {
+    var clone = this._clone();
+
+    clone.attributes = cloneDeep(this.attributes);
+    clone.htmlProps = cloneDeep(this.htmlProps);
+    clone.style = cloneDeep(this.style);
+    clone.handlers = cloneDeep(this.handlers);
+
+    clone._children = this._children.map(function(child) {
+      return child.clone();
+    });
+
+    clone._ref = this._ref;
+    clone._isOnRoute = this._isOnRoute;
+    clone.props = cloneDeep(this.props);
+    return clone;
   };
 
   this.append = function() {
@@ -252,35 +286,32 @@ VirtualDOMElement.Prototype = function() {
     return this;
   };
 
-  this.on = function(event, handler) {
-    // TODO: this not exactly correct. IMO in jquery you can register multiple
-    // handlers for the same event. But actually we do not do this. Fix when needed.
-    if (arguments.length !== 2 || !isString(event) || !isFunction(handler)) {
-      throw new Error('Illegal arguments for $$.on(event, handler).');
+  this.getStyle = function(name) {
+    if (this.style) {
+      return this.style[name];
     }
-    this.handlers[event] = handler;
-    return this;
   };
 
-  this.off = function(event, handler) {
-    // TODO: same issue as with this.on().
-    if (arguments.length !== 2 || !isString(event) || !isFunction(handler)) {
-      throw new Error('Illegal arguments for $$.on(event, handler).');
-    }
-    delete this.handlers[event];
-    return this;
-  };
-
-  this.css = function(style) {
+  this.setStyle = function(name, value) {
     if (!this.style) {
       this.style = {};
     }
-    if (arguments.length === 2) {
-      this.style[arguments[0]] = arguments[1];
-    } else {
-      extend(this.style, style);
+    this.style[name] = value;
+  };
+
+  this.addEventListener = function(eventName, selector, handler, context) {
+    if (this.handlers[eventName]) {
+      throw new Error('Handler for event "' + eventName + '" has already been registered.');
     }
-    return this;
+    this.handlers[eventName] = {
+      handler: handler,
+      context: context,
+      selector: selector
+    };
+  };
+
+  this.removeEventListener = function(eventName) {
+    delete this.handlers[eventName];
   };
 
   this._compile = function() {
@@ -293,7 +324,7 @@ VirtualDOMElement.Prototype = function() {
 
 };
 
-oo.inherit(VirtualDOMElement, DOMElement);
+DOMElement.extend(VirtualDOMElement);
 
 Object.defineProperties(VirtualDOMElement.prototype, {
   /**
@@ -341,9 +372,19 @@ VirtualElement.Prototype = function() {
   this.isElementNode = function() {
     return true;
   };
+
+  this._clone = function() {
+    return new VirtualElement(this._tagName);
+  };
+
+  // shallow equals
+  this._quasiEquals = function(other) {
+    return this.type === other.type && this._tagName === other._tagName;
+  };
+
 };
 
-oo.inherit(VirtualElement, VirtualDOMElement);
+VirtualDOMElement.extend(VirtualElement);
 
 Object.defineProperties(VirtualElement.prototype, {
   /**
@@ -376,7 +417,7 @@ VirtualComponentElement.Prototype = function() {
   // Note: for VirtualComponentElement we put children into props
   // so that the render method of ComponentClass can place it.
   this.getChildren = function() {
-
+    return this.props.children;
   };
 
   this.getNodeType = function() {
@@ -386,9 +427,19 @@ VirtualComponentElement.Prototype = function() {
   this.isElementNode = function() {
     return true;
   };
+
+  this._clone = function() {
+    return new VirtualComponentElement(this.ComponentClass);
+  };
+
+  // shallow equals
+  this._quasiEquals = function(other) {
+    return (this.type === other.type && this.ComponentClass === other.ComponentClass);
+  };
+
 };
 
-oo.inherit(VirtualComponentElement, VirtualDOMElement);
+VirtualDOMElement.extend(VirtualComponentElement);
 
 Object.defineProperties(VirtualComponentElement.prototype, {
   /**
@@ -447,9 +498,18 @@ VirtualTextNode.Prototype = function() {
     return true;
   };
 
+  this._clone = function() {
+    return new VirtualTextNode(this.props.text);
+  };
+
+  // shallow equals
+  this._quasiEquals = function(other) {
+    return (this.type === other.type && this.props.text === other.props.text);
+  };
+
 };
 
-oo.inherit(VirtualTextNode, VirtualDOMElement);
+VirtualDOMElement.extend(VirtualTextNode);
 
 /*
   A virtual node containing raw html.
@@ -473,9 +533,18 @@ RawHtml.Prototype = function() {
     return this.html;
   };
 
+  this._clone = function() {
+    return new RawHtml(this.html);
+  };
+
+  // shallow equals
+  this._quasiEquals = function(other) {
+    return (this.type === other.type && this.html === other.html);
+  };
+
 };
 
-oo.inherit(RawHtml, VirtualDOMElement);
+VirtualDOMElement.extend(RawHtml);
 
 VirtualDOMElement.prepareChildren = function(children) {
   for (var i = 0; i < children.length; i++) {

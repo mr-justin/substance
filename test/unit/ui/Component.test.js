@@ -2,7 +2,7 @@
 
 require('../qunit_extensions');
 
-var cloneDeep = require('lodash/lang/cloneDeep');
+var sinon = require('sinon');
 var isEqual = require('lodash/lang/isEqual');
 var Component = require('../../../ui/Component');
 var $$ = Component.$$;
@@ -181,7 +181,7 @@ QUnit.test("Preserve a child with ref", function(assert) {
   var child = comp.refs.foo;
   var el = child.el;
   // rerender using the same virtual dom
-  comp._render(cloneDeep(virtualDom));
+  comp._render(virtualDom.clone());
   assert.ok(comp.refs.foo === child, 'Child component should have been preserved.');
   assert.ok(comp.refs.foo.el === el, 'Child element should have been preserved.');
 });
@@ -192,7 +192,7 @@ QUnit.test("Wipe a child without ref", function(assert) {
   var child = comp.children[0];
   var el = child.el;
   // rerender using the same virtual dom
-  comp._render(cloneDeep(virtualDom));
+  comp._render(virtualDom.clone());
   // as we did not apply a ref, the component simply gets rerendered from scratch
   assert.ok(comp.children[0] !== child, 'Child component should have been preserved.');
   assert.ok(comp.children[0].el !== el, 'Child element should have been preserved.');
@@ -425,4 +425,44 @@ QUnit.test("Cascaded updates of HTML attributes.", function(assert) {
   assert.equal(comp.refs.child.val(), "child", "Child component should have updated html property.");
   comp.setProps({ childCss: { "width": "50px" } });
   assert.equal(comp.refs.child.$el.css('width'), "50px", "Child component should have updated css style.");
+});
+
+QUnit.test("Component.append() should support appending text.", function(assert) {
+  var comp = Component._render($$(SimpleComponent));
+  comp.append('XXX');
+  assert.equal(comp.text(), 'XXX');
+});
+
+
+QUnit.test("Should wipe a referenced component when class changes", function(assert) {
+
+  var ComponentA = TestComponent.extend({
+    render: function() {
+      return $$('div').addClass('component-a');
+    }
+  });
+  var ComponentB = TestComponent.extend({
+    render: function() {
+      return $$('div').addClass('component-b');
+    }
+  });
+
+  var MainComponent = TestComponent.extend({
+    render: function() {
+      var el = $$('div').addClass('context');
+      var ComponentClass;
+      if (this.props.context ==='A') {
+        ComponentClass = ComponentA;
+      } else {
+        ComponentClass = ComponentB;
+      }
+      el.append($$(ComponentClass).ref('context'));
+      return el;
+    }
+  });
+
+  var comp = Component.mount($$(MainComponent, {context: 'A'}), $('#qunit-fixture'));
+  assert.ok(comp.refs.context instanceof ComponentA, 'Context should be of instance ComponentA');
+  comp.setProps({context: 'B'});
+  assert.ok(comp.refs.context instanceof ComponentB, 'Context should be of instance ComponentB');
 });

@@ -10,8 +10,10 @@ var Range = require('./Range');
   A selection which is bound to a property. Implements {@link model/Selection}.
 
   @class
-  @example  
-  
+  @extends model/Selection
+
+  @example
+
   ```js
   var propSel = doc.createSelection({
     type: 'property',
@@ -25,12 +27,26 @@ var Range = require('./Range');
 function PropertySelection(properties) {
   PropertySelection.super.apply(this);
 
+  /**
+    The path to the selected property.
+    @type {String[]}
+  */
   var path = properties.path;
+  /**
+    Start character position.
+    @type {Number}
+  */
   var startOffset = properties.startOffset;
+  /**
+    End character position.
+    @type {Number}
+  */
   var endOffset = properties.endOffset || properties.startOffset;
+
   if (!path || !isNumber(startOffset)) {
     throw new Error('Invalid arguments: `path` and `startOffset` are mandatory');
   }
+
   this.range = new Range(
     new Coordinate(path, startOffset),
     new Coordinate(path, endOffset)
@@ -41,7 +57,7 @@ function PropertySelection(properties) {
 }
 
 PropertySelection.Prototype = function() {
- 
+
   /**
     Convert container selection to JSON.
 
@@ -58,9 +74,7 @@ PropertySelection.Prototype = function() {
   };
 
   /**
-    Get attached to selection document.
-
-    @returns {Document}
+    @returns {Document} The attached document instance
   */
   this.getDocument = function() {
     var doc = this._internal.doc;
@@ -138,29 +152,29 @@ PropertySelection.Prototype = function() {
 
   // Helper Methods
   // ----------------------
-  
+
   /**
     Get path of a selection, e.g. target property where selected data is stored.
 
-    @returns {String[]} path 
+    @returns {String[]} path
   */
   this.getPath = function() {
     return this.range.start.path;
   };
 
   /**
-    Get start of a selection range. 
+    Get start of a selection range.
 
-    @returns {Number} offset 
+    @returns {Number} offset
   */
   this.getStartOffset = function() {
     return this.range.start.offset;
   };
 
   /**
-    Get end of a selection range. 
+    Get end of a selection range.
 
-    @returns {Number} offset 
+    @returns {Number} offset
   */
   this.getEndOffset = function() {
     return this.range.end.offset;
@@ -199,7 +213,7 @@ PropertySelection.Prototype = function() {
         this.end.offset <= other.end.offset);
     }
   };
-  
+
   /**
     Checks if this selection contains another one.
 
@@ -349,9 +363,9 @@ PropertySelection.Prototype = function() {
   */
   this.getFragments = function() {
     if (this.isCollapsed()) {
-      return [new Selection.Fragment('cursor', this.path, this.startOffset)];
+      return [new Selection.Cursor(this.path, this.startOffset)];
     } else {
-      return [new Selection.Fragment('selection-fragment', this.path, this.startOffset, this.endOffset)];
+      return [new Selection.Fragment(this.path, this.startOffset, this.endOffset)];
     }
   };
 };

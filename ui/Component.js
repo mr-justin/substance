@@ -1,7 +1,6 @@
 'use strict';
 
 var $ = require('../util/jquery');
-var oo = require('../util/oo');
 var isString = require('lodash/lang/isString');
 var isEqual = require('lodash/lang/isEqual');
 var clone = require('lodash/lang/clone');
@@ -11,6 +10,7 @@ var I18n = require('./i18n');
 var EventEmitter = require('../util/EventEmitter');
 var DefaultDOMElement = require('./DefaultDOMElement');
 var VirtualDOMElement = require('./VirtualDOMElement');
+var VirtualTextNode = VirtualDOMElement.VirtualTextNode;
 
 var __id__ = 0;
 var _htmlParams;
@@ -151,11 +151,6 @@ Component.Prototype = function ComponentPrototype() {
     return this.childContext || {};
   };
 
-  /**
-    Hook which is called in the construction phase before the component is rendered.
-    Use this in conjunction with {@link ui/Component.extend}. You don't want to use this if you
-    provide your own constructor function and {@link util/oo.inherit}
-  */
   this.initialize = function(props, state) {
     // jshint unused: false
   };
@@ -464,10 +459,13 @@ Component.Prototype = function ComponentPrototype() {
     var needRerender = this.shouldRerender(newProps, this.getState());
     this.willReceiveProps(newProps);
     this._setProps(newProps);
-    this.didReceiveProps();
     if (needRerender) {
       this.rerender();
     }
+    // Important to call this after rerender, so within the hook you can interact
+    // with the updated DOM. However we still observe that sometimes the DOM is
+    // not ready at that point.
+    this.didReceiveProps();
   };
 
   /**
@@ -574,6 +572,12 @@ Component.Prototype = function ComponentPrototype() {
     throw new Error('Not supported.');
   };
 
+  this.setId = function(id) {
+    this._data.setId(id);
+    this.el.id = id;
+    return this;
+  };
+
   this.getTextContent = function() {
     if (!this.$el) {
       return "";
@@ -653,22 +657,9 @@ Component.Prototype = function ComponentPrototype() {
     return this;
   };
 
-  /**
-   * Add css styles.
-   *
-   * Part of the incremental updating API.
-   *
-   * @param {Object} style an object containing CSS property: value pairs.
-   */
-  this.css = function(style) {
-    if (arguments.length === 2) {
-      this._data.css(arguments[0], arguments[1]);
-      this.$el.css(arguments[0], arguments[1]);
-    } else if (style) {
-      this._data.css(style);
-      this.$el.css(style);
-    }
-    return this;
+  this.setStyle = function(name, value) {
+    this._data.setStyle(name, value);
+    this.$el.css(name, value);
   };
 
   this.getChildNodes = function() {
@@ -676,12 +667,16 @@ Component.Prototype = function ComponentPrototype() {
   };
 
   this.getChildren = function() {
-    // TODO: in DOMElement only real elements are provided
+    // TODO: this should return only real elements (i.e., without TextNodes and Comments)
     return this.children;
   };
 
+  this.createElement = function() {
+    throw new Error('Not supported yet.');
+  };
+
   this.clone = function() {
-    throw new Error('Not supported.');
+    throw new Error('Not supported yet.');
   };
 
   this.is = function(cssSelector) {
@@ -711,6 +706,9 @@ Component.Prototype = function ComponentPrototype() {
    * @param {ui/Component.VirtualNode} child the child component
    */
   this.append = function(child) {
+    if (isString(child)) {
+      child = new VirtualTextNode(child);
+    }
     var comp = this._compileComponent(child, {
       refs: this.refs
     });
@@ -804,9 +802,8 @@ Component.Prototype = function ComponentPrototype() {
       $el.css(data.style);
     }
     // $.on
-    each(data.handlers, function(handler, event) {
-      // console.log('Binding to', event, 'in', scope.owner);
-      $el.on(event, handler.bind(scope.owner));
+    each(data.handlers, function(handlerSpec, eventName) {
+      this._bindHandler($el[0], scope, eventName, handlerSpec);
     }, this);
     return $el;
   };
@@ -851,11 +848,11 @@ Component.Prototype = function ComponentPrototype() {
     }
     // $.on / $.off
     if (!isEqual(oldData.handlers, data.handlers)) {
-      each(oldData.handlers, function(handler, event) {
-        $el.off(event);
+      each(oldData.handlers, function(handler, eventName) {
+        $el.off(eventName);
       });
-      each(data.handlers, function(handler, event) {
-        $el.on(event, handler.bind(scope.owner));
+      each(data.handlers, function(handlerSpec, eventName) {
+        this._bindHandler($el[0], scope, eventName, handlerSpec);
       }, this);
     }
     return $el;
@@ -905,8 +902,8 @@ Component.Prototype = function ComponentPrototype() {
     var oldContent = oldData._children;
     var newContent = data._children;
 
+    // FIXME: this optimization is causing issue 311
     if (isEqual(oldContent, newContent)) {
-      // console.log('-----');
       this._data = data;
       return;
     }
@@ -978,8 +975,16 @@ Component.Prototype = function ComponentPrototype() {
       if (oldRef && newRef) {
         // the component is in the right place already
         if (oldRef === newRef) {
-          comp = oldComp;
-          _update(comp, _new);
+          // check if the two nodes are 'quasi' equal
+          // i.e. having the same type and e.g. Component class
+          if (_new._quasiEquals(_old)) {
+            comp = oldComp;
+            _update(comp, _new);
+          } else {
+            comp = this._compileComponent(_new, scope);
+            _replace(oldComp, comp);
+            comp.triggerDidMount(isMounted);
+          }
           pos++; oldPos++; newPos++;
         }
         // a new component has been inserted
@@ -1129,9 +1134,27 @@ Component.Prototype = function ComponentPrototype() {
     Object.freeze(this.state);
   };
 
+  this._bindHandler = function(nativeEl, scope, eventName, handlerSpec) {
+    // console.log('Binding to', event, 'in', scope.owner);
+    var handler = handlerSpec.handler;
+    if (handlerSpec.context) {
+      handler = handler.bind(handlerSpec.context);
+    } else {
+      handler = handler.bind(scope.owner);
+    }
+    if (handlerSpec.selector) {
+      var _handler = handler;
+      handler = function(event) {
+        if ($(event.target).is(handlerSpec.selector)) {
+          _handler(event);
+        }
+      };
+    }
+    nativeEl.addEventListener(eventName, handler);
+  };
 };
 
-oo.inherit(Component, DefaultDOMElement);
+DefaultDOMElement.extend(Component);
 
 Object.defineProperties(Component.prototype, {
   /**
@@ -1168,18 +1191,19 @@ _htmlParams = function(data) {
 Component.Root = function(params) {
   Component.call(this, "root", params);
 };
-oo.inherit(Component.Root, Component);
+Component.extend(Component.Root);
 
 Component.Container = function(parent, params) {
   Component.call(this, parent, params);
 };
-oo.inherit(Component.Container, Component);
+Component.extend(Component.Container);
 
 Component.HTMLElement = function(parent, tagName, params) {
   this._tagName = tagName;
   Component.Container.call(this, parent, params);
 };
-oo.inherit(Component.HTMLElement, Component.Container);
+
+Component.Container.extend(Component.HTMLElement);
 
 Component.Text = function(parent, text) {
   Component.call(this, parent);
@@ -1200,7 +1224,7 @@ Component.Text.Prototype = function() {
     }
   };
 };
-oo.inherit(Component.Text, Component);
+Component.extend(Component.Text);
 
 Component.createElement = VirtualDOMElement.createElement;
 Component.$$ = Component.createElement;

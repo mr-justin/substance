@@ -1,6 +1,5 @@
 'use strict';
 
-var oo = require('../../util/oo');
 var Component = require('../../ui/Component');
 var MemberContainerComponent = require('./MemberContainerComponent');
 var $$ = Component.$$;
@@ -45,7 +44,7 @@ ClassComponent.Prototype = function() {
 
     if (node.members && node.members.length > 0) {
       // member index
-      el.append($$(MemberIndexComponent, {node: node, categories: node.getMemberCategories()}));
+      el.append($$(MemberIndexComponent, {node: node}));
       // members
       el.append(this._renderMembers());
     }
@@ -54,6 +53,7 @@ ClassComponent.Prototype = function() {
   };
 
 };
-oo.inherit(ClassComponent, MemberContainerComponent);
+
+MemberContainerComponent.extend(ClassComponent);
 
 module.exports = ClassComponent;
