@@ -1,8 +1,12 @@
 "use strict";
 
+var delay = require('lodash/function/delay');
 var oo = require('../util/oo');
+var DocumentChange = require('./DocumentChange');
 
-function DocumentSession(doc) {
+var MAXIMUM_CHANGE_DURATION = 1500;
+
+function DocumentSession(doc, compressor, hub) {
   this.doc = doc;
   this.version = 0;
 
@@ -11,6 +15,9 @@ function DocumentSession(doc) {
 
   this.doneChanges = [];
   this.undoneChanges = [];
+
+  this.compressor = compressor;
+  this.hub = hub;
 }
 
 DocumentSession.Prototype = function() {
@@ -49,11 +56,29 @@ DocumentSession.Prototype = function() {
 
   this.commit = function(change, info) {
     // apply the change
+    change.timestamp = Date.now();
     // TODO: try to find a more explicit way, or a maybe a smarter way
     // to keep the TransactionDocument in sync
     this.doc._apply(change, 'saveTransaction');
-    // push to undo queue and wipe the redo queue
-    this.doneChanges.push(change);
+
+    var lastChange = this.getLastChange();
+    // try to merge this change with the last to get more natural changes
+    // e.g. not every keystroke, but typed words or such.
+    var merged = false;
+    if (lastChange && !lastChange.isFinal()) {
+      var now = Date.now();
+      if (now - lastChange.timestamp < MAXIMUM_CHANGE_DURATION) {
+        merged = this.compressor.merge(lastChange, change);
+      }
+    }
+    if (!merged) {
+      // finalize a change after a certain amount of time
+      delay(function(change) {
+        if (!change.isFinal()) { this._finalizeChange(change); }
+      }.bind(this, change), MAXIMUM_CHANGE_DURATION);
+      // push to undo queue and wipe the redo queue
+      this.doneChanges.push(change);
+    }
     this.undoneChanges = [];
     // console.log('Document._saveTransaction took %s ms', (Date.now() - time));
     // time = Date.now();
@@ -65,14 +90,28 @@ DocumentSession.Prototype = function() {
     }
   };
 
-  this.acknowledgeChange = function(changeId, newVersion) {
+  this._finalizeChange = function(change) {
+    change._state = DocumentChange.FINAL;
+    this._commitChange(change);
+  };
+
+  this._commitChange = function(change) {
+    // TODO: send change to hub
+    console.log('TODO: commit change to HUB', change._id);
+  };
+
+  this._acknowledgeChange = function(changeId, newVersion) {
     /* jshint unused: false */
     // TODO: tells the client that the change has been accepted and
   };
 
-  this.receivedChange = function(change, newVersion) {
+  this._receivedChange = function(change, newVersion) {
     /* jshint unused: false */
     // TODO: received a change from another client
+  };
+
+  this.getLastChange = function() {
+    return this.doneChanges[this.doneChanges.length-1];
   };
 
 };

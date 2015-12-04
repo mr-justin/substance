@@ -143,8 +143,12 @@ ObjectOperation.Prototype = function() {
     return this.type === DELETE;
   };
 
-  this.isUpdate = function() {
-    return this.type === UPDATE;
+  this.isUpdate = function(propertyType) {
+    if (propertyType) {
+      return (this.type === UPDATE && this.propertyType === propertyType);
+    } else {
+      return this.type === UPDATE;
+    }
   };
 
   this.isSet = function() {

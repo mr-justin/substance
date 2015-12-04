@@ -11,6 +11,9 @@ var TransactionDocument = require('./TransactionDocument');
 
 var PathEventProxy = require('./PathEventProxy');
 
+var DefaultChangeCompressor = require('./DefaultChangeCompressor');
+var StubHub = require('./StubHub');
+
 var __id__ = 0;
 
 /**
@@ -52,7 +55,7 @@ function Document(schema) {
 
   // EXPERIMENTAL: maybe this should be generalized
   // allowing for different types of editing sessions (e.g., single vs realtime-collab)
-  this._session = new DocumentSession(this);
+  this._session = new DocumentSession(this, new DefaultChangeCompressor(), new StubHub());
 
   // all by type
   this.addIndex('type', DocumentIndex.create({

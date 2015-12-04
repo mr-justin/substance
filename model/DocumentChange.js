@@ -1,26 +1,73 @@
 'use strict';
 
+var isObject = require('lodash/lang/isObject');
+var map = require('lodash/collection/map');
 var oo = require('../util/oo');
-var PathAdapter = require('../util/PathAdapter');
 var uuid = require('../util/uuid');
+var PathAdapter = require('../util/PathAdapter');
+var ObjectOperation = require('./data/ObjectOperation');
 
+var PROVISIONAL = 1;
+var FINAL = 2;
+var PENDING = 3;
+var ACKNOWLEDGED = 4;
+
+/*
+
+  States:
+
+  - Provisional:
+
+    Change has been applied to the document already. Subsequent changes might be merged
+    into it, to achieve a more natural representation.
+
+  - Final:
+
+    Change has been finalized.
+
+  - Pending:
+
+    Change has been committed to the collaboration hub.
+
+  - Acknowledged:
+
+    Change has been applied and acknowledged by the server.
+*/
 function DocumentChange(ops, before, after) {
-  this.id = uuid();
-  this.ops = ops.slice(0);
-  this.before = before;
-  this.after = after;
+  if (arguments.length === 1 && isObject(ops)) {
+    var data = arguments[0];
+    this._id = data.id;
+    this._state = data.state;
+    this.ops = map(data.ops, function(opData) {
+      return ObjectOperation.fromJSON(opData);
+    });
+    this.before = data.before;
+    this.after = data.after;
+    this.timestamp = data.timestamp;
+    this.userId = data.userId;
+    this.data = data.data;
+    Object.freeze(this);
+    Object.freeze(this.ops);
+    Object.freeze(this.before);
+    Object.freeze(this.after);
+  } else if (arguments.length === 3) {
+    this._id = uuid();
+    this._state = PROVISIONAL;
+    this.ops = ops.slice(0);
+    this.before = before;
+    this.after = after;
+  } else {
+    throw new Error('Illegal arguments.');
+  }
+  // a hash with all updated properties
   this.updated = null;
+  // a hash with all created nodes
   this.created = null;
+  // a hash with all deleted nodes
   this.deleted = null;
+
+  // TODO: maybe do this lazily, i.e. only when the change inspection API is used?
   this._init();
-  Object.freeze(this);
-  Object.freeze(this.ops);
-  Object.freeze(this.before);
-  Object.freeze(this.after);
-  // FIXME: ATM this is not possible, as NotifyPropertyChange monkey patches this info
-  // Object.freeze(this.updated);
-  // Object.freeze(this.deleted);
-  // Object.freeze(this.created);
 }
 
 DocumentChange.Prototype = function() {
@@ -52,11 +99,17 @@ DocumentChange.Prototype = function() {
     this.updated = updated;
   };
 
-  this.isAffected = function(path) {
-    return !!this.updated.get(path);
+  this.toJSON = function() {
+    return {
+      id: this._id,
+      state: this._state,
+      before: this.before,
+      ops: map(this.ops, function(op) {
+        return op.toJSON();
+      }),
+      after: this.after,
+    };
   };
-
-  this.isUpdated = this.isAffected;
 
   this.invert = function() {
     var ops = [];
@@ -74,20 +127,35 @@ DocumentChange.Prototype = function() {
     });
   };
 
-  this.getUpdates = function(path) {
-    return this.updated.get(path) || [];
+  this.isFinal = function() {
+    return this._state >= FINAL;
   };
 
-  this.getCreated = function() {
-    return this.created;
+  this.isPending = function() {
+    return this._state === PENDING;
   };
 
-  this.getDeleted = function() {
-    return this.deleted;
+  this.isAcknowledged = function() {
+    return this._state === ACKNOWLEDGED;
   };
+
+  /*
+   Change inspection API.
+   Should make it easier to implement change listeners.
+  */
+
+  this.isAffected = function(path) {
+    return !!this.updated.get(path);
+  };
+
+  this.isUpdated = this.isAffected;
 
 };
 
 oo.initClass(DocumentChange);
+
+DocumentChange.fromJSON = function(data) {
+  return new DocumentChange(data);
+};
 
 module.exports = DocumentChange;
