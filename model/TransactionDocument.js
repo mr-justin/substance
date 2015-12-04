@@ -210,20 +210,7 @@ TransactionDocument.Prototype = function() {
     var change;
     if (ops.length > 0) {
       change = new DocumentChange(ops, beforeState, afterState);
-      // apply the change
-      doc._apply(change, 'saveTransaction');
-      // push to undo queue and wipe the redo queue
-      doc.done.push(change);
-      doc.undone = [];
-      // console.log('Document._saveTransaction took %s ms', (Date.now() - time));
-      // time = Date.now();
-      if (!info.silent) {
-        // TODO: I would like to wrap this with a try catch.
-        // however, debugging gets inconvenient as caught exceptions don't trigger a breakpoint
-        // by default, and other libraries such as jquery throw noisily.
-        doc._notifyChangeListeners(change, info);
-      }
-      // console.log('Notifying change listener took %s ms', (Date.now() - time));
+      doc._session.commit(change, info);
     }
     this._isSaved = true;
     this.reset();

@@ -2,29 +2,33 @@
 
 var ControllerCommand = require('./ControllerCommand');
 
-var Redo = ControllerCommand.extend({
-  static: {
-    name: 'redo'
-  },
+function Redo() {
+  Redo.super.apply(this, arguments);
+}
 
-  getCommandState: function() {
+Redo.Prototype = function() {
+
+  this.getCommandState = function() {
     var doc = this.getDocument();
-
     return {
-      disabled: doc.undone.length === 0,
+      disabled: !doc.canRedo(),
       active: false
     };
-  },
+  };
 
-  execute: function() {
+  this.execute = function() {
     var doc = this.getDocument();
-    if (doc.undone.length>0) {
+    if (doc.canRedo()) {
       doc.redo();
       return true;
     } else {
       return false;
     }
-  }
-});
+  };
+};
+
+ControllerCommand.extend(Redo);
+
+Redo.static.name = 'redo';
 
 module.exports = Redo;

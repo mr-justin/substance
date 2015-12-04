@@ -6,6 +6,7 @@ var DocumentIndex = require('./DocumentIndex');
 var AnnotationIndex = require('./AnnotationIndex');
 var AnchorIndex = require('./AnchorIndex');
 
+var DocumentSession = require('./DocumentSession');
 var TransactionDocument = require('./TransactionDocument');
 
 var PathEventProxy = require('./PathEventProxy');
@@ -49,6 +50,10 @@ function Document(schema) {
   AbstractDocument.call(this, schema);
   this.__id__ = __id__++;
 
+  // EXPERIMENTAL: maybe this should be generalized
+  // allowing for different types of editing sessions (e.g., single vs realtime-collab)
+  this._session = new DocumentSession(this);
+
   // all by type
   this.addIndex('type', DocumentIndex.create({
     property: "type"
@@ -59,9 +64,6 @@ function Document(schema) {
 
   // special index for (contaoiner-scoped) annotations
   this.addIndex('container-annotation-anchors', new AnchorIndex());
-
-  this.done = [];
-  this.undone = [];
 
   // change event proxies are triggered after a document change has been applied
   // before the regular document:changed event is fired.
@@ -229,28 +231,20 @@ Document.Prototype = function() {
     }
   };
 
+  this.canUndo = function() {
+    return this._session.canUndo();
+  };
+
   this.undo = function() {
-    var change = this.done.pop();
-    if (change) {
-      var inverted = change.invert();
-      this._apply(inverted);
-      this.undone.push(inverted);
-      this._notifyChangeListeners(inverted, { 'replay': true });
-    } else {
-      console.error('No change can be undone.');
-    }
+    this._session.undo();
+  };
+
+  this.canRedo = function() {
+    return this._session.canRedo();
   };
 
   this.redo = function() {
-    var change = this.undone.pop();
-    if (change) {
-      var inverted = change.invert();
-      this._apply(inverted);
-      this.done.push(inverted);
-      this._notifyChangeListeners(inverted, { 'replay': true });
-    } else {
-      console.error('No change can be redone.');
-    }
+    this._session.redo();
   };
 
   this.getEventProxy = function(name) {
@@ -321,29 +315,29 @@ Document.Prototype = function() {
     this.emit('highlights:updated', highlights);
   };
 
-  this._apply = function(documentChange, mode) {
+  this._apply = function(transaction, mode) {
     if (mode !== 'saveTransaction') {
       if (this.isTransacting) {
         throw new Error('Can not replay a document change during transaction.');
       }
       // in case of playback we apply the change to the
       // stage (i.e. transaction clone) to keep it updated on the fly
-      this.stage.apply(documentChange);
+      this.stage.apply(transaction);
     }
-    each(documentChange.ops, function(op) {
+    each(transaction.ops, function(op) {
       this.data.apply(op);
       this.emit('operation:applied', op);
     }, this);
   };
 
-  this._notifyChangeListeners = function(documentChange, info) {
+  this._notifyChangeListeners = function(transaction, info) {
     info = info || {};
-    this.emit('document:changed', documentChange, info, this);
+    this.emit('document:changed', transaction, info, this);
   };
 
-  this._updateEventProxies = function(documentChange, info) {
+  this._updateEventProxies = function(transaction, info) {
     each(this.eventProxies, function(proxy) {
-      proxy.onDocumentChanged(documentChange, info, this);
+      proxy.onDocumentChanged(transaction, info, this);
     }, this);
   };
 };
