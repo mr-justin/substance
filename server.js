@@ -1,8 +1,7 @@
 var express = require('express');
 var path = require('path');
 var glob = require('glob');
-var browserify = require('browserify');
-var sass = require('node-sass');
+var serverUtils = require('server-utils');
 var PORT = process.env.PORT || 4201;
 var app = express();
 
@@ -20,46 +19,9 @@ app.get('/docs/documentation.json', function(req, res) {
   res.json(nodes);
 });
 
-app.get('/docs/app.js', function (req, res) {
-  browserify({ debug: true, cache: false })
-    .add(path.join(__dirname, 'doc', 'app.js'))
-    .bundle()
-    .on('error', function(err){
-      console.error(err.message);
-      res.send('console.log("'+err.message+'");');
-    })
-    .pipe(res);
-});
-
-var handleError = function(err, res) {
-  console.error(err);
-  res.status(400).json(err);
-};
-
-var renderSass = function(cb) {
-  sass.render({
-    file: path.join(__dirname, 'doc', 'app.scss'),
-    sourceMap: true,
-    outFile: 'app.css',
-  }, cb);
-};
-
-
-app.get('/docs/app.css', function(req, res) {
-  renderSass(function(err, result) {
-    if (err) return handleError(err, res);
-    res.set('Content-Type', 'text/css');
-    res.send(result.css);
-  });
-});
-
-app.get('/docs/app.css.map', function(req, res) {
-  renderSass(function(err, result) {
-    if (err) return handleError(err, res);
-    res.set('Content-Type', 'text/css');
-    res.send(result.map);
-  });
-});
+app.use('/docs/app.js', serverUtils.bundleJS(path.join(__dirname, 'doc', 'app.js')));
+app.use('/docs/app.css', serverUtils.bundleStyles(path.join(__dirname, 'doc', 'app.scss'), {file: 'app.css'}));
+app.use('/docs/app.css.map', serverUtils.bundleStyles(path.join(__dirname, 'app', 'app.scss'), {file: 'app.css', map: true}));
 
 // Test suite
 app.get('/test/test.js', function (req, res, next) {
