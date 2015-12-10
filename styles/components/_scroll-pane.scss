@@ -14,4 +14,26 @@
   .se-content {
     position: relative;
   }
+
+  /* Hide native scroll bar in content panel */
+  .se-content::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+  }
+  
+  .se-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0);
+  }
+
+  /* For debugging purposes */
+  // .se-scanline {
+  //   position: absolute;
+  //   display: none;
+  //   top: 50px;
+  //   left: 40px;
+  //   width: 10px;
+  //   height: 2px;
+  //   background: #ccc;
+  // }
+
 }

@@ -6,6 +6,8 @@ var $$ = Component.$$;
 
 // A rich scrollbar implementation that supports highlights
 // ----------------
+// 
+// TODO: Change panel to scrollPane
 
 function Scrollbar() {
   Component.apply(this, arguments);
@@ -26,7 +28,7 @@ Scrollbar.Prototype = function() {
     $(window).on('resize', this.rerender.bind(this));
 
     var panel = this.props.panel;
-    var panelContentEl = panel.getPanelContentElement();
+    var panelContentEl = panel.getContentElement();
     $(panelContentEl).on('scroll', this.onScroll.bind(this));
   };
 
@@ -69,9 +71,9 @@ Scrollbar.Prototype = function() {
 
   this.updatePositions = function() {
     var panel = this.props.panel;
-    var panelContentEl = panel.getPanelContentElement();
+    var panelContentEl = panel.getContentElement();
     var contentHeight = panel.getContentHeight();
-    var panelHeight = panel.getPanelHeight();
+    var panelHeight = panel.getHeight();
     var scrollTop = panel.getScrollPosition();
 
     // Needed for scrollbar interaction
