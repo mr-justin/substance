@@ -3,7 +3,6 @@
 var $ = require('../util/jquery');
 var Component = require('./Component');
 var Scrollbar = require('./Scrollbar');
-
 var $$ = Component.$$;
 
 function ScrollPane() {
@@ -15,22 +14,22 @@ ScrollPane.Prototype = function() {
     var el = $$('div')
       .addClass('sc-scroll-pane');
 
-    // Initialize visual scrollbar
-    if (this.props.scrollbarType === 'visual') {
-      el.addClass('sm-visual-scrollbar');
+    // Initialize Substance scrollbar (if enabled)
+    if (this.props.scrollbarType === 'substance') {
+      el.addClass('sm-substance-scrollbar');
+      el.addClass('sm-scrollbar-position-'+this.props.scrollbarPosition);
 
       el.append(
         $$(Scrollbar, {
-          panel: this,
-          // contextId: controller.state.contextId,
-          // highlights: doc.getHighlights()
+          scrollPane: this
         }).ref('scrollbar')
           .attr('id', 'content-scrollbar')
       );
-
-      // el.append(
-      //   $$('div').ref("scanline").addClass('se-scanline')
-      // );
+      
+      // For debugging purposes
+      el.append(
+        $$('div').ref("scanline").addClass('se-scanline')
+      );
     }
 
     el.append(
@@ -38,15 +37,21 @@ ScrollPane.Prototype = function() {
         $$('div').ref('content').addClass('se-content').append(
           this.props.children
         )
-      )
+      ).on('scroll', this.onScroll)
     );
     return el;
   };
 
+  this.onScroll = function() {
+    if (this.props.onScroll) {
+      this.props.onScroll(this.getScrollPosition());
+    }
+  };
+
   // Returns the height of scrollPane (inner content overflows)
   this.getHeight = function() {
-    var contentEl = this.getContentElement();
-    return $(this.el).height();
+    var scrollableEl = this.getScrollableElement();
+    return $(scrollableEl).height();
   };
 
   // Returns the cumulated height of a panel's content
@@ -95,7 +100,6 @@ ScrollPane.Prototype = function() {
     addParentOffset(el.parentNode);
     return offset;
   };
-
 
   this.scrollToNode = function(nodeId) {
     var el = this.el;

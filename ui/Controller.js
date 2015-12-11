@@ -6,6 +6,8 @@ var ToolManager = require('./ToolManager');
 var Registry = require('../util/Registry');
 var Logger = require ('../util/Logger');
 var Selection = require('../model/Selection');
+var TOC = require('./TOC');
+
 
 // Setup default I18n
 var I18n = require('./i18n');
@@ -100,11 +102,19 @@ function Controller() {
   if (config.i18n) {
     I18n.instance.load(config.i18n);
   }
+
   /**
-   * Manages tools.
-   *
-   * @type ui.ToolManager
-   */
+    Manages table of content.
+    
+    @type ui.TOC
+  */
+  this.toc = new TOC(this);
+
+  /**
+    Manages tools.
+    
+    @type ui.ToolManager
+  */
   this.toolManager = new ToolManager(this);
   this._initialize(this.props);
   this.handleStateUpdate(this.state);
@@ -183,6 +193,7 @@ Controller.Prototype = function() {
       controller: this,
       componentRegistry: this.componentRegistry,
       toolManager: this.toolManager,
+      toc: this.toc,
       i18n: I18n.instance
     };
   };

@@ -27,9 +27,9 @@ Scrollbar.Prototype = function() {
     // Install global event handlers
     $(window).on('resize', this.rerender.bind(this));
 
-    var panel = this.props.panel;
-    var panelContentEl = panel.getContentElement();
-    $(panelContentEl).on('scroll', this.onScroll.bind(this));
+    var scrollPane = this.props.scrollPane;
+    var scrollableEl = scrollPane.getScrollableElement();
+    $(scrollableEl).on('scroll', this.onScroll.bind(this));
   };
 
   this.dispose = function() {
@@ -70,26 +70,29 @@ Scrollbar.Prototype = function() {
   };
 
   this.updatePositions = function() {
-    var panel = this.props.panel;
-    var panelContentEl = panel.getContentElement();
-    var contentHeight = panel.getContentHeight();
-    var panelHeight = panel.getHeight();
-    var scrollTop = panel.getScrollPosition();
+    console.log('updating positions');
+    var scrollPane = this.props.scrollPane;
+    var scrollableEl = scrollPane.getScrollableElement();
+    var contentHeight = scrollPane.getContentHeight();
+    var scrollPaneHeight = scrollPane.getHeight();
+    var scrollTop = scrollPane.getScrollPosition();
 
     // Needed for scrollbar interaction
-    this.factor = (contentHeight / panelHeight);
+    this.factor = (contentHeight / scrollPaneHeight);
+
+    console.log('scrollPaneHeight', scrollPaneHeight);
 
     // Update thumb
     this.refs.thumb.css({
       top: scrollTop / this.factor,
-      height: panelHeight / this.factor
+      height: scrollPaneHeight / this.factor
     });
 
     // If we have highlights, update them as well
     if (this.props.highlights) {
       // Compute highlights
       this.props.highlights.forEach(function(nodeId) {
-        var nodeEl = $(panelContentEl).find('*[data-id="'+nodeId+'"]');
+        var nodeEl = $(scrollableEl).find('*[data-id="'+nodeId+'"]');
         if (!nodeEl.length) return;
         var top = nodeEl.position().top / this.factor;
         var height = nodeEl.outerHeight(true) / this.factor;
@@ -108,7 +111,6 @@ Scrollbar.Prototype = function() {
         } else {
           console.warn('no ref found for highlight', nodeId);
         }
-
       }.bind(this));
     }
   };

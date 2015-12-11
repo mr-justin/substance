@@ -2,28 +2,42 @@
 -----------------------------------------------------*/
 
 .sc-scroll-pane {
+  // Make space for Substance Scrollbar on the left side
+  &.sm-substance-scrollbar.sm-scrollbar-position-left .se-scrollable {
+    left: 20px;
+  }
 
-  position: absolute;
-  top: 0px;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  overflow: auto;
-  line-height: 24px;
+  // Make space for Substance Scrollbar on the right side
+  &.sm-substance-scrollbar.sm-scrollbar-position-right .se-scrollable {
+    right: 20px;
+  }
+  
+  // The scrollable container element
+  .se-scrollable {
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    overflow: auto;
+    line-height: 24px;
+  }
+
+  /* Hide native scroll bar in content panel */
+  .se-scrollable::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+  }
+  
+  .se-scrollable::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0);
+  }
 
   .se-content {
     position: relative;
   }
 
-  /* Hide native scroll bar in content panel */
-  .se-content::-webkit-scrollbar {
-    width: 0px;
-    height: 0px;
-  }
-  
-  .se-content::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0);
-  }
+
 
   /* For debugging purposes */
   // .se-scanline {
