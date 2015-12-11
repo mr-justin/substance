@@ -23,7 +23,9 @@ schema.getDefaultTextType = function() {
   return null;
 };
 
+// DEPRECATED
 schema.getTocTypes = function() {
+  console.warn('DEPRECATED!');
   return ['namespace', 'class', 'function', 'module'];
 };
 
@@ -40,21 +42,6 @@ var Documentation = function() {
 
 Documentation.Prototype = function() {
 
-  // Takes a config object from the app context
-  this.getTOCNodes = function(config) {
-    config = config || {};
-    var tocNodes = [];
-    var contentNodes = this.get('body').nodes;
-    contentNodes.forEach(function(nsId) {
-      var ns = this.get(nsId);
-      tocNodes.push(ns);
-      each(ns.getMemberCategories(), function(cat) {
-        var catMembers = ns.getCategoryMembers(cat, config);
-        tocNodes = tocNodes.concat(catMembers);
-      });
-    }.bind(this));
-    return tocNodes;
-  };
 };
 
 Document.extend(Documentation);

@@ -5,28 +5,98 @@ var EventEmitter = require('../util/EventEmitter');
 var $ = require('../util/jquery');
 
 function TOC(controller) {
+  EventEmitter.apply(this, arguments);
   this.controller = controller;
 
-  // this.controller.doc.connect(this, {
-  //   'toc:entry-selected': this.onTocEntrySelected
-  //   // 'highlights:updated': this.onHighlightsUpdated
-  // }, -1);
+  this.entries = this.computeEntries();
+  if (this.entries.length > 0) {
+    this.activeEntry = this.entries[0].id;
+  } else {
+    this.activeEntry = null;
+  }
+  
+  var doc = this.getDocument();
+  doc.connect(this, {
+    'document:changed': this.handleDocumentChange
+  });
 }
 
 TOC.Prototype = function() {
 
-  this.getDocument = function() {
-    return this.controller.props.doc;
-  };
-
   this.dispose = function() {
-    this.controller.doc.disconnect(this);
+    var doc = this.getDocument();
+    doc.disconnect(this);
   };
 
+  // Inspects a document change and recomputes the
+  // entries if necessary
+  this.handleDocumentChange = function(change) {
+    var doc = this.getDocument();
+    var needsUpdate = false;
+    var tocTypes = this.constructor.static.tocTypes;
+
+    // HACK: this is not totally correct but works.
+    // Actually, the TOC should be updated if tocType nodes
+    // get inserted or removed from the container, plus any property changes
+    // This implementation just checks for changes of the node type
+    // not the container, but as we usually create and show in
+    // a single transaction this works.
+    for (var i = 0; i < change.ops.length; i++) {
+      var op = change.ops[i];
+      var nodeType;
+      if (op.isCreate() || op.isDelete()) {
+        var nodeData = op.getValue();
+        nodeType = nodeData.type;
+        if (_.includes(tocTypes, nodeType)) {
+          needsUpdate = true;
+          break;
+        }
+      } else {
+        var id = op.path[0];
+        var node = doc.get(id);
+        if (node && _.includes(tocTypes, node.type)) {
+          needsUpdate = true;
+          break;
+        }
+      }
+    }
+    if (needsUpdate) {
+      this.entries = this.computeEntries();
+      this.emit('toc:updated');
+    }
+  };
+
+  this.computeEntries = function() {
+    var doc = this.getDocument();
+    var entries = [];
+    var contentNodes = doc.get('main').nodes;
+    _.each(contentNodes, function(nodeId) {
+      var node = doc.get(nodeId);
+      if (node.type === 'heading') {
+        entries.push({
+          id: node.id,
+          name: node.content,
+          level: node.level,
+          node: node
+        });
+      }
+    });
+    return entries;
+  };
+
+  this.getEntries = function() {
+    return this.entries;
+  };
+
+  this.getDocument = function() {
+    return this.controller.getDocument();
+  };
+
+  this.getConfig = function() {
+    return this.controller.getConfig();
+  };
 
   this.markActiveEntry = function(scrollPane) {
-    var doc = this.getDocument();
-
     var $panelContent = $(scrollPane.getContentElement());
     var contentHeight = scrollPane.getContentHeight();
     var scrollPaneHeight = scrollPane.getHeight();
@@ -43,11 +113,11 @@ TOC.Prototype = function() {
     //   top: (scanline - scrollTop)+'px'
     // });
   
-    var tocNodes = doc.getTOCNodes(scrollPane.context.config);
+    var tocNodes = this.computeEntries();
     if (tocNodes.length === 0) return;
 
     // Use first toc node as default
-    var activeNode = _.first(tocNodes).id;
+    var activeEntry = _.first(tocNodes).id;
     tocNodes.forEach(function(tocNode) {
       var nodeEl = $panelContent.find('[data-id="'+tocNode.id+'"]')[0];
       if (!nodeEl) {
@@ -56,14 +126,19 @@ TOC.Prototype = function() {
       }
       var panelOffset = scrollPane.getPanelOffsetForElement(nodeEl);
       if (scanline >= panelOffset) {
-        activeNode = tocNode.id;
+        activeEntry = tocNode.id;
       }
     }.bind(this));
 
-    doc.emit('app:toc-entry:changed', activeNode);
+    if (this.activeEntry !== activeEntry) {
+      this.activeEntry = activeEntry;
+      this.emit('toc:updated');
+    }
   };
 };
 
 EventEmitter.extend(TOC);
+
+TOC.static.tocTypes = ['heading'];
 
 module.exports = TOC;

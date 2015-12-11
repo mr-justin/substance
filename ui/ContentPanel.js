@@ -15,13 +15,24 @@ function ContentPanel() {
   doc.connect(this, {
     'document:changed': this.onDocumentChange
   }, -1);
+
+  // Connect to TOC instance
+  var toc = this.context.toc;
+  toc.connect(this, {
+    'entry:selected': this.onTOCEntrySelected
+  });
 }
 
 ContentPanel.Prototype = function() {
+  this.onTOCEntrySelected = function(nodeId) {
+    this.refs.scrollPane.scrollTo(nodeId);
+  };
 
   this.dispose = function() {
     var doc = this.getDocument();
     doc.disconnect(this);
+    var toc = this.context.toc;
+    toc.disconnect(this);
   };
 
   this.getDocument = function() {
@@ -61,8 +72,6 @@ ContentPanel.Prototype = function() {
       this.context.toc.markActiveEntry(this.refs.scrollPane);
     }
   };
-
-
 };
 
 Panel.extend(ContentPanel);

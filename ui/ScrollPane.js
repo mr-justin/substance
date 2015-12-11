@@ -5,6 +5,27 @@ var Component = require('./Component');
 var Scrollbar = require('./Scrollbar');
 var $$ = Component.$$;
 
+/**
+  Wraps content in a scroll pane.
+
+  @class ScrollPanel
+  @component
+
+  @prop {String} [scrollbarType] 'native' or 'substance' for a more advanced visual scrollbar. Defaults to 'native'
+  @prop {String} [scrollbarPosition] 'left' or 'right' only relevant for 'substance' scrollbar type
+
+  @example
+
+
+  ```js
+  $$(ScrollPane, {
+    scrollbarType: 'substance', // defaults to native
+    scrollbarPosition: 'left', // defaults to right
+    onScroll: this.onScroll.bind(this)
+  }
+  ```
+ */
+
 function ScrollPane() {
   Component.apply(this, arguments);
 }
@@ -48,13 +69,18 @@ ScrollPane.Prototype = function() {
     }
   };
 
-  // Returns the height of scrollPane (inner content overflows)
+  /**
+    Returns the height of scrollPane (inner content overflows)
+  */
+
   this.getHeight = function() {
     var scrollableEl = this.getScrollableElement();
     return $(scrollableEl).height();
   };
 
-  // Returns the cumulated height of a panel's content
+  /**
+    Returns the cumulated height of a panel's content
+  */
   this.getContentHeight = function() {
     var contentHeight = 0;
     // var el = this.el;
@@ -66,19 +92,33 @@ ScrollPane.Prototype = function() {
     return contentHeight;
   };
 
+  /**
+    Get the `.se-content` element
+  */
   this.getContentElement = function() {
     return this.refs.content.el
   };
 
+  /**
+    Get the `.se-scrollable` element
+  */
   this.getScrollableElement = function() {
     return this.refs.scrollable.el;
   };
 
+  /**
+    Get current scroll position (scrollTop) of `.se-scrollable` element
+  */
   this.getScrollPosition = function() {
     var scrollableEl = this.getScrollableElement();
     return $(scrollableEl).scrollTop();
   };
 
+  /**
+    Get offset relative to `.se-content`.
+
+    @param {DOMNode} el DOM node that lives inside the 
+  */
   this.getPanelOffsetForElement = function(el) {
     // initial offset
     var offset = $(el).position().top;
@@ -101,15 +141,19 @@ ScrollPane.Prototype = function() {
     return offset;
   };
 
-  this.scrollToNode = function(nodeId) {
-    var el = this.el;
-    // Node we want to scroll to
-    var targetNode = $(el).find('*[data-id="'+nodeId+'"]')[0];
+  /**
+    Scroll to a given sub component.
+
+    @param {String} componentId component id, must be present in data-id attribute
+  */
+  this.scrollTo = function(componentId) {
+    var scrollableEl = this.getScrollableElement();
+    var targetNode = $(scrollableEl).find('*[data-id="'+componentId+'"]')[0];
     if (targetNode) {
       var offset = this.getPanelOffsetForElement(targetNode);
-      $(el).scrollTop(offset);
+      $(scrollableEl).scrollTop(offset);
     } else {
-      console.warn(nodeId, 'not found in scrollable container');
+      console.warn(componentId, 'not found in scrollable container');
     }
   };
 };

@@ -2,14 +2,29 @@
 -----------------------------------------------------*/
 
 .sc-scroll-pane {
-  // Make space for Substance Scrollbar on the left side
-  &.sm-substance-scrollbar.sm-scrollbar-position-left .se-scrollable {
-    left: 20px;
-  }
 
-  // Make space for Substance Scrollbar on the right side
-  &.sm-substance-scrollbar.sm-scrollbar-position-right .se-scrollable {
-    right: 20px;
+  // Substance scrollbar active
+  &.sm-substance-scrollbar {
+    
+    // Make space for Substance Scrollbar on the left side
+    &.sm-scrollbar-position-left .se-scrollable {
+      left: 20px;
+    }
+
+    // Make space for Substance Scrollbar on the right side
+    &.sm-scrollbar-position-right .se-scrollable {
+      right: 20px;
+    }
+
+    /* Hide native scroll bar in content panel */
+    .se-scrollable::-webkit-scrollbar {
+      width: 0px;
+      height: 0px;
+    }
+    
+    .se-scrollable::-webkit-scrollbar-thumb {
+      background-color: rgba(0, 0, 0, 0);
+    }
   }
   
   // The scrollable container element
@@ -23,21 +38,9 @@
     line-height: 24px;
   }
 
-  /* Hide native scroll bar in content panel */
-  .se-scrollable::-webkit-scrollbar {
-    width: 0px;
-    height: 0px;
-  }
-  
-  .se-scrollable::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0);
-  }
-
   .se-content {
     position: relative;
   }
-
-
 
   /* For debugging purposes */
   // .se-scanline {
