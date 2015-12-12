@@ -224,6 +224,14 @@ ObjectOperation.Prototype = function() {
     return this.val;
   };
 
+  this.getOldValue = function() {
+    return this.original;
+  };
+
+  this.getValueOp = function() {
+    return this.diff;
+  };
+
   this.toString = function() {
     switch (this.type) {
       case CREATE:
