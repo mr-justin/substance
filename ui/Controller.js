@@ -6,8 +6,6 @@ var ToolManager = require('./ToolManager');
 var Registry = require('../util/Registry');
 var Logger = require ('../util/Logger');
 var Selection = require('../model/Selection');
-var TOC = require('./TOC');
-
 
 // Setup default I18n
 var I18n = require('./i18n');
@@ -104,16 +102,7 @@ function Controller() {
   }
 
   /**
-    Manages table of content.
-    
-    @type ui.TOC
-  */
-  this.toc = new TOC(this);
-
-  /**
     Manages tools.
-    
-    @type ui.ToolManager
   */
   this.toolManager = new ToolManager(this);
   this._initialize(this.props);
@@ -135,9 +124,9 @@ Controller.Prototype = function() {
   };
 
   /**
-   * Dispose component when component life ends. If you need to implement dispose
-   * in your custom Controller class, don't forget the super call.
-   */
+     Dispose component when component life ends. If you need to implement dispose
+     in your custom Controller class, don't forget the super call.
+  */
   this.dispose = function() {
     this.$el.off('keydown');
     if (this.props.doc) {
@@ -193,7 +182,6 @@ Controller.Prototype = function() {
       controller: this,
       componentRegistry: this.componentRegistry,
       toolManager: this.toolManager,
-      toc: this.toc,
       i18n: I18n.instance
     };
   };

@@ -20,7 +20,6 @@ TOCPanel.Prototype = function() {
     return this.context.doc;
   };
 
-  // Do a forced rerender
   this.onTOCUpdated = function() {
     this.rerender();
   };
@@ -74,7 +73,8 @@ TOCPanel.Prototype = function() {
     var nodeId = e.currentTarget.dataset.id;
     e.preventDefault();
     var toc = this.context.toc;
-    toc.emit('entry:selected', nodeId);
+    // toc.emit('entry:selected', nodeId);
+    this.send('tocEntrySelected', nodeId);
   };
 };
 

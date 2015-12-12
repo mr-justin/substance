@@ -8,14 +8,11 @@ var $$ = Component.$$;
 /**
   Wraps content in a scroll pane.
 
-  @class ScrollPanel
+  @class ScrollPane
   @component
 
-  @prop {String} [scrollbarType] 'native' or 'substance' for a more advanced visual scrollbar. Defaults to 'native'
-  @prop {String} [scrollbarPosition] 'left' or 'right' only relevant for 'substance' scrollbar type
-
-  @example
-
+  @prop {String} scrollbarType 'native' or 'substance' for a more advanced visual scrollbar. Defaults to 'native'.
+  @prop {String} [scrollbarPosition] 'left' or 'right' only relevant when scrollBarType: 'substance'. Defaults to 'right'.
 
   ```js
   $$(ScrollPane, {
@@ -25,7 +22,6 @@ var $$ = Component.$$;
   }
   ```
  */
-
 function ScrollPane() {
   Component.apply(this, arguments);
 }

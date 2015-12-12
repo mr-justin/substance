@@ -1,9 +1,7 @@
 'use strict';
 
-var _ = require('../util/helpers');
 var Component = require('./Component');
 var $$ = Component.$$;
-var $ = require('../util/jquery');
 var Panel = require("./Panel");
 var ScrollPane = require('substance/ui/ScrollPane');
 
@@ -17,22 +15,23 @@ function ContentPanel() {
   }, -1);
 
   // Connect to TOC instance
-  var toc = this.context.toc;
-  toc.connect(this, {
-    'entry:selected': this.onTOCEntrySelected
-  });
+  // var toc = this.context.toc;
+  // toc.connect(this, {
+  //   'entry:selected': this.onTOCEntrySelected
+  // });
 }
 
 ContentPanel.Prototype = function() {
-  this.onTOCEntrySelected = function(nodeId) {
-    this.refs.scrollPane.scrollTo(nodeId);
-  };
+  // this.onTOCEntrySelected = function(nodeId) {
+  //   this.refs.scrollPane.scrollTo(nodeId);
+  // };
+
 
   this.dispose = function() {
     var doc = this.getDocument();
     doc.disconnect(this);
-    var toc = this.context.toc;
-    toc.disconnect(this);
+    // var toc = this.context.toc;
+    // toc.disconnect(this);
   };
 
   this.getDocument = function() {
@@ -67,7 +66,7 @@ ContentPanel.Prototype = function() {
     this.refs.scrollPane.refs.scrollbar.updatePositions();
   };
 
-  this.onScroll = function(scrollPos) {
+  this.onScroll = function() {
     if (this.context.toc) {
       this.context.toc.markActiveEntry(this.refs.scrollPane);
     }

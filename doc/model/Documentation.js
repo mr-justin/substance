@@ -23,12 +23,6 @@ schema.getDefaultTextType = function() {
   return null;
 };
 
-// DEPRECATED
-schema.getTocTypes = function() {
-  console.warn('DEPRECATED!');
-  return ['namespace', 'class', 'function', 'module'];
-};
-
 var Documentation = function() {
   Document.call(this, schema);
 

@@ -1,20 +1,24 @@
 var TOC = require('../ui/toc');
+var each = require('lodash/collection/each');
 
 function DocumentationTOC() {
-  DocumentationTOC.apply(this, arguments);
+  TOC.apply(this, arguments);
 }
 
 DocumentationTOC.Prototype = function() {
 
-  this.computeEntries = function(config) {
+  this.computeEntries = function() {
     var doc = this.getDocument();
+    var config = this.getConfig();
+
     var entries = [];
     var contentNodes = doc.get('body').nodes;
 
     contentNodes.forEach(function(nsId) {
-      var ns = this.get(nsId);
+      var ns = doc.get(nsId);
       entries.push({
         id: nsId,
+        name: ns.name,
         level: 1,
         node: ns
       });
@@ -24,12 +28,11 @@ DocumentationTOC.Prototype = function() {
         catMembers.forEach(function(catMember) {
           entries.push({
             id: catMember.id,
+            name: catMember.name,
             level: 2,
             node: catMember
           });
         });
-
-        tocNodes = tocNodes.concat(catMembers);
       });
     }.bind(this));
     return entries;

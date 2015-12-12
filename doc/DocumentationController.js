@@ -5,6 +5,7 @@ var extend = require('lodash/object/extend');
 var Controller = require("../ui/Controller");
 var Router = require('../ui/Router');
 var omit = require('lodash/object/omit');
+var DocumentationTOC = require('./DocumentationTOC');
 
 // Substance is i18n ready, but by now we did not need it
 // Thus, we configure I18n statically as opposed to loading
@@ -12,14 +13,12 @@ var omit = require('lodash/object/omit');
 var I18n = require('../ui/i18n');
 I18n.instance.load(require('./i18n/en'));
 
-
 function DocumentationController(parent, params) {
   Controller.call(this, parent, params);
+  this.toc = new DocumentationTOC(this),
 
   this.handleApplicationKeyCombos = this.handleApplicationKeyCombos.bind(this);
-
-  // action handlers
-  this.actions({
+  this.handleActions({
     "switchState": this.switchState,
     "extendState": this.extendState,
     "switchContext": this.switchContext,
@@ -60,7 +59,9 @@ DocumentationController.Prototype = function() {
   // Some things should go into controller
   this.getChildContext = function() {
     var childContext = Controller.prototype.getChildContext.call(this);
+
     return _.extend(childContext, {
+      toc: this.toc,
       i18n: I18n.instance,
     });
   };
@@ -91,7 +92,7 @@ DocumentationController.Prototype = function() {
   };
 
   this.jumpToNode = function(nodeId) {
-    this.props.doc.emit("toc:entry-selected", nodeId);
+    this.toc.emit("entry:selected", nodeId);
   };
 
   this.restoreSelection = function() {
