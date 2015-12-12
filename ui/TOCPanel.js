@@ -37,7 +37,6 @@ TOCPanel.Prototype = function() {
       .addClass("se-toc-entries")
       .ref('tocEntries');
 
-    var state = this.state;
     _.each(toc.getEntries(), function(entry) {
       var level = entry.level;
 
@@ -72,7 +71,7 @@ TOCPanel.Prototype = function() {
   this.handleClick = function(e) {
     var nodeId = e.currentTarget.dataset.id;
     e.preventDefault();
-    var toc = this.context.toc;
+    // var toc = this.context.toc;
     // toc.emit('entry:selected', nodeId);
     this.send('tocEntrySelected', nodeId);
   };

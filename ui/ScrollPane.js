@@ -92,7 +92,7 @@ ScrollPane.Prototype = function() {
     Get the `.se-content` element
   */
   this.getContentElement = function() {
-    return this.refs.content.el
+    return this.refs.content.el;
   };
 
   /**

@@ -15,7 +15,7 @@ I18n.instance.load(require('./i18n/en'));
 
 function DocumentationController(parent, params) {
   Controller.call(this, parent, params);
-  this.toc = new DocumentationTOC(this),
+  this.toc = new DocumentationTOC(this);
 
   this.handleApplicationKeyCombos = this.handleApplicationKeyCombos.bind(this);
   this.handleActions({

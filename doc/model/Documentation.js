@@ -1,6 +1,5 @@
 'use strict';
 
-var each = require('lodash/collection/each');
 var Document = require('../../model/Document');
 var Schema = require('../../model/DocumentSchema');
 var schema = new Schema('substance-documentation', '0.1.0');
