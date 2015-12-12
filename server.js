@@ -1,12 +1,13 @@
 var express = require('express');
 var path = require('path');
 var glob = require('glob');
-var serverUtils = require('server-utils');
+var browserify = require('browserify');
 var PORT = process.env.PORT || 4201;
 var app = express();
 
 var config = require('./doc/config.json');
 var generate = require('./doc/generator/generate');
+var serverUtils = require('./util/serverUtils');
 
 // use static server
 app.use('/docs', express.static(path.join(__dirname, 'doc/assets')));
@@ -19,9 +20,12 @@ app.get('/docs/documentation.json', function(req, res) {
   res.json(nodes);
 });
 
-app.use('/docs/app.js', serverUtils.bundleJS(path.join(__dirname, 'doc', 'app.js')));
-app.use('/docs/app.css', serverUtils.bundleStyles(path.join(__dirname, 'doc', 'app.scss'), {file: 'app.css'}));
-app.use('/docs/app.css.map', serverUtils.bundleStyles(path.join(__dirname, 'app', 'app.scss'), {file: 'app.css', map: true}));
+serverUtils.serveBundle(app, {
+  path: '/docs',
+  sourceDir: path.join(__dirname, 'doc'),
+  fileName: 'app',
+  map: true
+});
 
 // Test suite
 app.get('/test/test.js', function (req, res, next) {
@@ -52,6 +56,8 @@ app.get('/test/test.js', function (req, res, next) {
 // NOTE: '/base' is necessary to be compatible with karma
 app.use('/test', express.static(__dirname + '/test'));
 app.use('/base/test', express.static(__dirname + '/test'));
+
+app.use(serverUtils.errorHandler);
 
 app.listen(PORT);
 console.log('Server is listening on %s', PORT);
