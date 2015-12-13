@@ -3,6 +3,7 @@
 var $ = require('../util/jquery');
 var Component = require('./Component');
 var $$ = Component.$$;
+var each = require('lodash/collection/each');
 
 // A rich scrollbar implementation that supports highlights
 // ----------------
@@ -49,10 +50,16 @@ Scrollbar.Prototype = function() {
       .on('mousedown', this.onMouseDown);
     
     if (this.props.highlights) {
-      var highlightEls = this.props.highlights.map(function(h) {
-        return $$('div').ref(h)
-          .addClass('se-highlight');
+      var highlightEls = [];
+
+      each(this.props.highlights, function(highlights, scope) {
+        each(highlights, function(h) {
+          highlightEls.push(
+            $$('div').ref(h).addClass('se-highlight sm-'+scope)
+          );
+        });
       });
+
       el.append(
         $$('div').ref('highlights')
           .addClass('se-highlights')
@@ -87,26 +94,28 @@ Scrollbar.Prototype = function() {
     // If we have highlights, update them as well
     if (this.props.highlights) {
       // Compute highlights
-      this.props.highlights.forEach(function(nodeId) {
-        var nodeEl = $(scrollableEl).find('*[data-id="'+nodeId+'"]');
-        if (!nodeEl.length) return;
-        var top = nodeEl.position().top / this.factor;
-        var height = nodeEl.outerHeight(true) / this.factor;
+      each(this.props.highlights,function(highlights) {
+        each(highlights, function(nodeId) {
+          var nodeEl = $(scrollableEl).find('*[data-id="'+nodeId+'"]');
+          if (!nodeEl.length) return;
+          var top = nodeEl.position().top / this.factor;
+          var height = nodeEl.outerHeight(true) / this.factor;
 
-        // Use specified minHeight for highlights
-        if (height < Scrollbar.overlayMinHeight) {
-          height = Scrollbar.overlayMinHeight;
-        }
+          // Use specified minHeight for highlights
+          if (height < Scrollbar.overlayMinHeight) {
+            height = Scrollbar.overlayMinHeight;
+          }
 
-        var highlight = this.refs[nodeId];
-        if (highlight) {
-          this.refs[nodeId].css({
-            top: top,
-            height: height
-          });
-        } else {
-          console.warn('no ref found for highlight', nodeId);
-        }
+          var highlightEl = this.refs[nodeId];
+          if (highlightEl) {
+            this.refs[nodeId].css({
+              top: top,
+              height: height
+            });
+          } else {
+            console.warn('no ref found for highlight', nodeId);
+          }
+        }.bind(this));
       }.bind(this));
     }
   };

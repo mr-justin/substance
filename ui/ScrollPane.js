@@ -37,13 +37,15 @@ ScrollPane.Prototype = function() {
       el.addClass('sm-scrollbar-position-'+this.props.scrollbarPosition);
 
       el.append(
+        // TODO: is there a way to pass scrollbar highlights already
+        // via props? Currently the are initialized with a delay
         $$(Scrollbar, {
           scrollPane: this
         }).ref('scrollbar')
           .attr('id', 'content-scrollbar')
       );
       
-      // For debugging purposes
+      // Scanline is debugging purposes, display: none by default.
       el.append(
         $$('div').ref("scanline").addClass('se-scanline')
       );
@@ -79,9 +81,7 @@ ScrollPane.Prototype = function() {
   */
   this.getContentHeight = function() {
     var contentHeight = 0;
-    // var el = this.el;
     var contentEl = this.refs.content.el;
-
     $(contentEl).children().each(function() {
      contentHeight += $(this).outerHeight();
     });
