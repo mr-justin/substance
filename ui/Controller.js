@@ -6,6 +6,7 @@ var ToolManager = require('./ToolManager');
 var Registry = require('../util/Registry');
 var Logger = require ('../util/Logger');
 var Selection = require('../model/Selection');
+var DocumentSession = require('../model/DocumentSession');
 
 // Setup default I18n
 var I18n = require('./i18n');
@@ -26,13 +27,13 @@ I18n.instance.load(require('../i18n/en'));
   @class
   @component
   @abstract
-  
+
   @example
 
-  We utilize a custom {@link ui/Toolbar} and a configured {@link ui/ContainerEditor}. 
+  We utilize a custom {@link ui/Toolbar} and a configured {@link ui/ContainerEditor}.
   Check out the [examples](http://gitub.com/substance/examples) for complete usage.
 
-   as a `Toolbar` including tools like the `UndoTool` and a configured `ContainerEditor`, which will do the actual editing work. 
+   as a `Toolbar` including tools like the `UndoTool` and a configured `ContainerEditor`, which will do the actual editing work.
 
   ```js
   var ProseEditor = Controller.extend({
@@ -88,6 +89,10 @@ I18n.instance.load(require('../i18n/en'));
 function Controller() {
   Component.apply(this, arguments);
   if (!this.props.doc) throw new Error('Controller requires a Substance document instance');
+
+  // NOTE: transactional editing, collab stuff etc is maintained by DocumentSession
+  // TODO: we will want to make this configurable
+  this.documentSession = new DocumentSession(this.props.doc);
 
   this.surfaces = {};
   this.focusedSurface = null;
@@ -250,6 +255,10 @@ Controller.Prototype = function() {
     return this.props.doc;
   };
 
+  this.getDocumentSession = function() {
+    return this.documentSession;
+  };
+
   /**
    * Get Surface instance
    *
@@ -358,9 +367,8 @@ Controller.Prototype = function() {
       surface.transaction.apply(surface, arguments);
     } else {
       // No focused surface, let's do it on document
-      this.props.doc.transaction.apply(this.props.doc, arguments);
+      this.documentSession.transaction.apply(this.documentSession, arguments);
     }
-    
   };
 
   // FIXME: even if this seems to be very hacky,

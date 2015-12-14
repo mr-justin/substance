@@ -2,6 +2,7 @@
 
 require('../qunit_extensions');
 var Surface = require('../../../ui/Surface');
+var DocumentSession = require('../../../model/DocumentSession');
 
 function StubSurface(doc, containerId) {
 
@@ -9,12 +10,18 @@ function StubSurface(doc, containerId) {
   this.containerId = containerId;
   this.selection = null;
 
+  var docSession = new DocumentSession(doc);
+
   this.getName = function() {
     return this.name;
   };
 
   this.getDocument = function() {
     return doc;
+  };
+
+  this.getDocumentSession = function() {
+    return docSession;
   };
 
   this.getSelection = function() {

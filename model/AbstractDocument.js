@@ -56,8 +56,6 @@ EventEmitter.extend(AbstractDocument, function AbstractDocumentPrototype() {
     return this.data.nodes;
   };
 
-  this.documentDidLoad = function() {};
-
   /**
     @returns {model/DocumentSchema} the document's schema.
   */
@@ -299,7 +297,6 @@ EventEmitter.extend(AbstractDocument, function AbstractDocumentPrototype() {
       this.create(nodeData);
     }, this);
 
-    this.documentDidLoad();
   };
 
   /**

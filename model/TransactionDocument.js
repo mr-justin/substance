@@ -30,11 +30,13 @@ var __id__ = 0;
   });
   ```
 */
-function TransactionDocument(document) {
+function TransactionDocument(document, session) {
   AbstractDocument.call(this, document.schema);
   this.__id__ = "TX_"+__id__++;
 
   this.document = document;
+  this.session = session;
+
   // ops recorded since transaction start
   this.ops = [];
   // app information state information used to recover the state before the transaction
@@ -65,9 +67,7 @@ TransactionDocument.Prototype = function() {
   this.create = function(nodeData) {
     var op = this.data.create(nodeData);
     if (!op) return;
-    if (this.document.isTransacting) {
-      this.ops.push(op);
-    }
+    this.ops.push(op);
     // TODO: incremental graph returns op not the node,
     // so probably here we should too?
     return this.data.get(nodeData.id);
@@ -79,9 +79,7 @@ TransactionDocument.Prototype = function() {
   this.delete = function(nodeId) {
     var op = this.data.delete(nodeId);
     if (!op) return;
-    if (this.document.isTransacting) {
-      this.ops.push(op);
-    }
+    this.ops.push(op);
     return op;
   };
 
@@ -91,9 +89,7 @@ TransactionDocument.Prototype = function() {
   this.set = function(path, value) {
     var op = this.data.set(path, value);
     if (!op) return;
-    if (this.document.isTransacting) {
-      this.ops.push(op);
-    }
+    this.ops.push(op);
     return op;
   };
 
@@ -103,9 +99,7 @@ TransactionDocument.Prototype = function() {
   this.update = function(path, diffOp) {
     var op = this.data.update(path, diffOp);
     if (!op) return;
-    if (this.document.isTransacting) {
-      this.ops.push(op);
-    }
+    this.ops.push(op);
     return op;
   };
 
@@ -187,7 +181,7 @@ TransactionDocument.Prototype = function() {
         this.cancel();
       }
       // HACK: making sure that the state is reset when an exception has occurred
-      this.document.isTransacting = false;
+      this.session.isTransacting = false;
     }
   };
 
@@ -203,14 +197,13 @@ TransactionDocument.Prototype = function() {
     if (this._isCancelled) {
       return;
     }
-    var doc = this.document;
     var beforeState = this.before;
     afterState = extend({}, beforeState, afterState);
     var ops = this.ops;
     var change;
     if (ops.length > 0) {
       change = new DocumentChange(ops, beforeState, afterState);
-      doc._session.commit(change, info);
+      this.session.commit(change, info);
     }
     this._isSaved = true;
     this.reset();

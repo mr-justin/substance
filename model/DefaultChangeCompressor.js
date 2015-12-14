@@ -1,13 +1,29 @@
 "use strict";
 
-var oo = require('../util/oo');
 var isEqual = require('lodash/lang/isEqual');
+var delay = require('lodash/function/delay');
+var oo = require('../util/oo');
 var ObjectOperation = require('./data/ObjectOperation');
+
+var MAXIMUM_CHANGE_DURATION = 1500;
 
 function DefaultChangeCompressor() {
 }
 
 DefaultChangeCompressor.Prototype = function() {
+
+  this.shouldMerge = function(lastChange, change) {
+
+    var now = Date.now();
+    var shouldMerge = (now - lastChange.timestamp < MAXIMUM_CHANGE_DURATION);
+    if (!shouldMerge) {
+      // finalize a change after a certain amount of time
+      delay(function(change) {
+        if (!change.isFinal()) { change.makeFinal(); }
+      }.bind(this, change), MAXIMUM_CHANGE_DURATION);
+    }
+
+  };
 
   /*
     This compresser tries to merge subsequent text operation

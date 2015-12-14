@@ -1,23 +1,39 @@
 "use strict";
 
-var delay = require('lodash/function/delay');
 var oo = require('../util/oo');
-var DocumentChange = require('./DocumentChange');
+var TransactionDocument = require('./TransactionDocument');
+var DefaultChangeCompressor = require('./DefaultChangeCompressor');
 
-var MAXIMUM_CHANGE_DURATION = 1500;
-
-function DocumentSession(doc, compressor, hub) {
+/*
+  TODO: Maybe find a suitable name.
+  The purpose of this class is to maintain editing related things:
+    - selection
+    - transactions
+    - undo/redo
+    - versioning
+    - collaborative editing
+*/
+function DocumentSession(doc, options) {
+  options = options || {};
   this.doc = doc;
+
+  // TODO: do we want to force transactions whenever a DocumentSession has been created?
+  doc.FORCE_TRANSACTIONS = true;
+
   this.version = 0;
 
-  this.uncommittedChanges = [];
-  this.pendingChanges = [];
+  this.selection = null;
+
+  // the stage is a essentially a clone of this document
+  // used to apply a sequence of document operations
+  // without touching this document
+  this.stage = new TransactionDocument(this.doc, this);
+  this.isTransacting = false;
 
   this.doneChanges = [];
   this.undoneChanges = [];
 
-  this.compressor = compressor;
-  this.hub = hub;
+  this.compressor = options.compressor || new DefaultChangeCompressor();
 }
 
 DocumentSession.Prototype = function() {
@@ -34,6 +50,7 @@ DocumentSession.Prototype = function() {
     var change = this.doneChanges.pop();
     if (change) {
       var inverted = change.invert();
+      this.stage._apply(inverted);
       this.doc._apply(inverted);
       this.undoneChanges.push(inverted);
       this.doc._notifyChangeListeners(inverted, { 'replay': true });
@@ -46,12 +63,44 @@ DocumentSession.Prototype = function() {
     var change = this.undoneChanges.pop();
     if (change) {
       var inverted = change.invert();
+      this.stage._apply(inverted);
       this.doc._apply(inverted);
       this.doneChanges.push(inverted);
       this.doc._notifyChangeListeners(inverted, { 'replay': true });
     } else {
       console.error('No change can be redone.');
     }
+  };
+
+  /**
+    Start a transaction to manipulate the document
+
+    @param {object} [beforeState] object which will be used as before start of transaction
+    @param {object} [eventData] object which will be used as payload for the emitted document:change event
+    @param {function} transformation a function(tx) that performs actions on the transaction document tx
+
+    @example
+
+    ```js
+    doc.transaction({ selection: sel }, {'event-hack': true}, function(tx, args) {
+      tx.update(...);
+      ...
+      return {
+        selection: newSelection
+      };
+    })
+    ```
+  */
+  this.transaction = function(beforeState, eventData, transformation) {
+    /* jshint unused: false */
+    if (this.isTransacting) {
+      throw new Error('Nested transactions are not supported.');
+    }
+    this.isTransacting = true;
+    this.stage.reset();
+    var change = this.stage._transaction.apply(this.stage, arguments);
+    this.isTransacting = false;
+    return change;
   };
 
   this.commit = function(change, info) {
@@ -66,16 +115,11 @@ DocumentSession.Prototype = function() {
     // e.g. not every keystroke, but typed words or such.
     var merged = false;
     if (lastChange && !lastChange.isFinal()) {
-      var now = Date.now();
-      if (now - lastChange.timestamp < MAXIMUM_CHANGE_DURATION) {
+      if (this.compressor.shouldMerge(lastChange, change)) {
         merged = this.compressor.merge(lastChange, change);
       }
     }
     if (!merged) {
-      // finalize a change after a certain amount of time
-      delay(function(change) {
-        if (!change.isFinal()) { this._finalizeChange(change); }
-      }.bind(this, change), MAXIMUM_CHANGE_DURATION);
       // push to undo queue and wipe the redo queue
       this.doneChanges.push(change);
     }
@@ -90,19 +134,10 @@ DocumentSession.Prototype = function() {
     }
   };
 
-  this._finalizeChange = function(change) {
-    change._state = DocumentChange.FINAL;
-    this._commitChange(change);
-  };
-
   this._commitChange = function(change) {
+    /* jshint unused:false */
     // TODO: send change to hub
-    console.log('TODO: commit change to HUB', change._id);
-  };
-
-  this._acknowledgeChange = function(changeId, newVersion) {
-    /* jshint unused: false */
-    // TODO: tells the client that the change has been accepted and
+    // console.log('TODO: commit change to HUB', change._id);
   };
 
   this._receivedChange = function(change, newVersion) {

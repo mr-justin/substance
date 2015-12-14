@@ -1,6 +1,9 @@
 /* jshint latedef:nofunc */
 "use strict";
 
+var isArray = require('lodash/lang/isArray');
+var isNumber = require('lodash/lang/isNumber');
+var isObject = require('lodash/lang/isObject');
 var oo = require('../../util/oo');
 var ObjectOperation = require('./ObjectOperation');
 var TextOperation = require('./TextOperation');
@@ -66,38 +69,28 @@ OperationSerializer.Prototype = function() {
       case 'create':
         out.push('c');
         out.push(op.val.id);
-        out.push(JSON.stringify(op.val));
+        out.push(op.val);
         break;
       case 'delete':
         out.push('d');
         out.push(op.val.id);
-        out.push(JSON.stringify(op.val));
+        out.push(op.val);
         break;
       case 'set':
         out.push('s');
         out.push(op.path.join('.'));
-        // NOTE: we need to replace undefined by null
-        // as JSON does not support undefined as a value.
-        if (op.val === undefined) {
-          out.push('null');
-        } else {
-          out.push(JSON.stringify(op.val));
-        }
-        if (op.original === undefined) {
-          out.push('null');
-        } else {
-          out.push(JSON.stringify(op.original));
-        }
+        out.push(op.val);
+        out.push(op.original);
         break;
       case 'update':
         out.push('u');
         out.push(op.path.join('.'));
-        out.push(this.serializePrimitiveOp(op.diff));
+        Array.prototype.push.apply(out, this.serializePrimitiveOp(op.diff));
         break;
       default:
         throw new Error('Unsupported operation type.');
     }
-    return out.join(this.SEPARATOR);
+    return out;
   };
 
   this.serializePrimitiveOp = function(op) {
@@ -109,7 +102,7 @@ OperationSerializer.Prototype = function() {
         out.push('t-');
       }
       out.push(op.pos);
-      out.push(JSON.stringify(op.str));
+      out.push(op.str);
     } else if (op instanceof ArrayOperation) {
       if (op.isInsert()) {
         out.push('a+');
@@ -117,11 +110,11 @@ OperationSerializer.Prototype = function() {
         out.push('a-');
       }
       out.push(op.pos);
-      out.push(JSON.stringify(op.val));
+      out.push(op.val);
     } else {
       throw new Error('Unsupported operation type.');
     }
-    return out.join(this.SEPARATOR);
+    return out;
   };
 
   this.deserialize = function(str, tokenizer) {
@@ -143,8 +136,8 @@ OperationSerializer.Prototype = function() {
         break;
       case 's':
         path = tokenizer.getPath();
-        val = tokenizer.getObject();
-        oldVal = tokenizer.getObject();
+        val = tokenizer.getAny();
+        oldVal = tokenizer.getAny();
         op = ObjectOperation.Set(path, oldVal, val);
         break;
       case 'u':
@@ -165,22 +158,22 @@ OperationSerializer.Prototype = function() {
     switch (type) {
       case 't+':
         pos = tokenizer.getNumber();
-        val = tokenizer.getObject();
+        val = tokenizer.getString();
         op = TextOperation.Insert(pos, val);
         break;
       case 't-':
         pos = tokenizer.getNumber();
-        val = tokenizer.getObject();
+        val = tokenizer.getString();
         op = TextOperation.Delete(pos, val);
         break;
       case 'a+':
         pos = tokenizer.getNumber();
-        val = tokenizer.getObject();
+        val = tokenizer.getAny();
         op = ArrayOperation.Insert(pos, val);
         break;
       case 'a-':
         pos = tokenizer.getNumber();
-        val = tokenizer.getObject();
+        val = tokenizer.getAny();
         op = ArrayOperation.Delete(pos, val);
         break;
       default:
@@ -193,24 +186,23 @@ OperationSerializer.Prototype = function() {
 oo.initClass(OperationSerializer);
 
 function Tokenizer(str, sep) {
-  this.re = new RegExp("([^"+sep+"]+)("+sep+"|$)", "gi");
-  this.str = str;
+  if (isArray(arguments[0])) {
+    this.tokens = arguments[0];
+  } else {
+    this.tokens = str.split(sep);
+  }
   this.pos = -1;
 }
 
 Tokenizer.Prototype = function() {
 
   this.error = function(msg) {
-    throw new Error('Parsing error: ' + msg + '\n' + this.str.slice(this.pos));
+    throw new Error('Parsing error: ' + msg + '\n' + this.tokens[this.pos]);
   };
 
   this.getString = function() {
-    var match = this.re.exec(this.str);
-    if (!match) {
-      this.error('expected string');
-    }
-    this.pos = match.index + match[0].length;
-    var str = match[1];
+    this.pos++;
+    var str = this.tokens[this.pos];
     if (str[0] === '"') {
       str = str.slice(1, -1);
     }
@@ -218,14 +210,15 @@ Tokenizer.Prototype = function() {
   };
 
   this.getNumber = function() {
-    var match = this.re.exec(this.str);
-    if (!match) {
-      this.error('expected number');
-    }
+    this.pos++;
     var number;
+    var token = this.tokens[this.pos];
     try {
-      number = parseInt(match[1]);
-      this.pos = match.index + match[0].length;
+      if (isNumber(token)) {
+        number = token;
+      } else {
+        number = parseInt(this.tokens[this.pos]);
+      }
       return number;
     } catch (err) {
       this.error('expected number');
@@ -233,18 +226,25 @@ Tokenizer.Prototype = function() {
   };
 
   this.getObject = function() {
-    var match = this.re.exec(this.str);
-    if (!match) {
-      this.error('expected object');
-    }
+    this.pos++;
     var obj;
+    var token = this.tokens[this.pos];
     try {
-      obj = JSON.parse(match[1]);
-      this.pos = match.index + match[0].length;
+      if (isObject(token)) {
+        obj = token;
+      } else {
+        obj = JSON.parse(this.tokens[this.pos]);
+      }
       return obj;
     } catch (err) {
       this.error('expected object');
     }
+  };
+
+  this.getAny = function() {
+    this.pos++;
+    var token = this.tokens[this.pos];
+    return token;
   };
 
   this.getPath = function() {

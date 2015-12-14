@@ -189,25 +189,30 @@ QUnit.test("Container Annotation: Fuse annos", function(assert) {
   var surface = new StubSurface(doc, 'main');
   var cmd = new ToggleContainerAnnoCommand(surface);
 
-  // Create a second container annotation to be fused
-  doc.create({
-    type: 'test-container-anno',
-    id: 'a4',
-    container: 'main',
-    startPath: ['p3', 'content'],
-    startOffset: 6,
-    endPath: ['p4', 'content'],
-    endOffset: 9,
-  });
+  // There is already a container anno in the fixture
+  // p1.content[5]...p3.content[4]
 
-  // Selected text 'Paragraph' in p1
+  // Create a second container annotation to be fused
+  // p3.content[6]...p4.content[9]
+  surface.transaction(function(tx) {
+    tx.create({
+      type: 'test-container-anno',
+      id: 'a4',
+      container: 'main',
+      startPath: ['p3', 'content'],
+      startOffset: 6,
+      endPath: ['p4', 'content'],
+      endOffset: 9,
+    });
+  });
+  // Create a selection that overlaps both of the container annos
   var sel = doc.createSelection({
     type: 'container',
     containerId: 'main',
-    startPath: ['p2', 'content'],
-    startOffset: 5,
-    endPath: ['p4', 'content'],
-    endOffset: 4,
+    startPath: ['p3', 'content'],
+    startOffset: 1,
+    endPath: ['p3', 'content'],
+    endOffset: 9,
   });
   surface.setSelection(sel);
 
@@ -218,10 +223,10 @@ QUnit.test("Container Annotation: Fuse annos", function(assert) {
 
   assert.equal(res.mode, 'fuse', "Mode should be 'fuse'");
   assert.equal(anno.type, 'test-container-anno', 'New anno should be of type strong');
-  assert.deepEqual(anno.startPath, ['p1', 'content'], "New anno should have path ['p2', 'content']");
+  assert.deepEqual(anno.startPath, ['p1', 'content'], "New anno should have path ['p1', 'content']");
   assert.deepEqual(anno.endPath, ['p4', 'content'], "New anno should have path ['p4', 'content']");
   assert.equal(anno.startOffset, 5, 'anno.startOffset should be 5');
-  assert.equal(anno.endOffset, 9, 'anno.startOffset should be 9');
+  assert.equal(anno.endOffset, 9, 'anno.endOffset should be 9');
 
   var annos = docHelpers.getAnnotationsForSelection(doc, sel, 'test-container-anno', 'main');
   assert.equal(annos.length, 1, 'One strong anno should be found for sel');

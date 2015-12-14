@@ -26,6 +26,8 @@ function Surface() {
   var controller = this.getController();
   var doc =  this.getDocument();
 
+  // TODO: we need a DocumentSession instance
+
   if (!controller) {
     throw new Error('Surface needs a valid controller');
   }
@@ -208,6 +210,10 @@ Surface.Prototype = function() {
     return doc;
   };
 
+  this.getDocumentSession = function() {
+    return this.getController().getDocumentSession();
+  };
+
   // Must be implemented by container surfaces
   this.getContainer = function() {};
 
@@ -290,10 +296,10 @@ Surface.Prototype = function() {
     // TODO: remove this clear here, and in future do it on document:willchange (not implemented yet)
     // Then cursor flickering will be gone for undo/redos too.
     // this.surfaceSelection.clear();
-    var doc = this.getDocument();
+    var docSession = this.getDocumentSession();
     // Making the doc transaction silent, so that the document:changed event does not
     // get emitted before the selection has been updated.
-    var change = doc.transaction(beforeState, {silent: true}, function(tx, args) {
+    var change = docSession.transaction(beforeState, {silent: true}, function(tx, args) {
       args.selection = beforeState.selection;
       // A transformation receives a set of input arguments and should return a set of output arguments.
       var result = transformation.call(ctx, tx, args);
@@ -311,7 +317,7 @@ Surface.Prototype = function() {
       // set the selection before notifying any listeners
       var sel = afterState.selection;
       this._setSelection(sel, "silent");
-      doc._notifyChangeListeners(change);
+      docSession.doc._notifyChangeListeners(change);
       this.emit('selection:changed', sel, this);
       this.rerenderDomSelection();
     }

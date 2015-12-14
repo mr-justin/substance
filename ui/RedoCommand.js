@@ -9,17 +9,17 @@ function Redo() {
 Redo.Prototype = function() {
 
   this.getCommandState = function() {
-    var doc = this.getDocument();
+    var docSession = this.getDocumentSession();
     return {
-      disabled: !doc.canRedo(),
+      disabled: !docSession.canRedo(),
       active: false
     };
   };
 
   this.execute = function() {
-    var doc = this.getDocument();
-    if (doc.canRedo()) {
-      doc.redo();
+    var docSession = this.getDocumentSession();
+    if (docSession.canRedo()) {
+      docSession.redo();
       return true;
     } else {
       return false;

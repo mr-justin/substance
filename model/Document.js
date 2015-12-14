@@ -5,14 +5,8 @@ var AbstractDocument = require('./AbstractDocument');
 var DocumentIndex = require('./DocumentIndex');
 var AnnotationIndex = require('./AnnotationIndex');
 var AnchorIndex = require('./AnchorIndex');
-
-var DocumentSession = require('./DocumentSession');
-var TransactionDocument = require('./TransactionDocument');
-
+var DocumentChange = require('./DocumentChange');
 var PathEventProxy = require('./PathEventProxy');
-
-var DefaultChangeCompressor = require('./DefaultChangeCompressor');
-var StubHub = require('./StubHub');
 
 var __id__ = 0;
 
@@ -53,10 +47,6 @@ function Document(schema) {
   AbstractDocument.call(this, schema);
   this.__id__ = __id__++;
 
-  // EXPERIMENTAL: maybe this should be generalized
-  // allowing for different types of editing sessions (e.g., single vs realtime-collab)
-  this._session = new DocumentSession(this, new DefaultChangeCompressor(), new StubHub());
-
   // all by type
   this.addIndex('type', DocumentIndex.create({
     property: "type"
@@ -81,12 +71,6 @@ function Document(schema) {
 
   this.initialize();
 
-  // the stage is a essentially a clone of this document
-  // used to apply a sequence of document operations
-  // without touching this document
-  this.stage = new TransactionDocument(this);
-  this.isTransacting = false;
-
   this.FORCE_TRANSACTIONS = false;
 
   // Note: using the general event queue (as opposed to calling _updateEventProxies from within _notifyChangeListeners)
@@ -97,39 +81,6 @@ function Document(schema) {
 }
 
 Document.Prototype = function() {
-
-  // Document manipulation
-  //
-
-  /**
-    Start a transaction to manipulate the document
-
-    @param {object} [beforeState] object which will be used as before start of transaction
-    @param {object} [eventData] object which will be used as payload for the emitted document:change event
-    @param {function} transformation a function(tx) that performs actions on the transaction document tx
-
-    @example
-
-    ```js
-    doc.transaction({ selection: sel }, {'event-hack': true}, function(tx, args) {
-      tx.update(...);
-      ...
-      return {
-        selection: newSelection
-      };
-    })
-    ```
-  */
-  this.transaction = function(beforeState, eventData, transformation) {
-    /* jshint unused: false */
-    if (this.isTransacting) {
-      throw new Error('Nested transactions are not supported.');
-    }
-    this.isTransacting = true;
-    var change = this.stage._transaction.apply(this.stage, arguments);
-    this.isTransacting = false;
-    return change;
-  };
 
   /**
     Creates a context like a transaction for importing nodes.
@@ -181,14 +132,8 @@ Document.Prototype = function() {
     if (this.FORCE_TRANSACTIONS) {
       throw new Error('Use a transaction!');
     }
-    if (this.isTransacting) {
-      this.stage.create(nodeData);
-    } else {
-      if (this.stage) {
-        this.stage.create(nodeData);
-      }
-      this._create(nodeData);
-    }
+    var op = this._create(nodeData);
+    this._notifyChangeListeners(new DocumentChange([op], {}, {}));
     return this.data.get(nodeData.id);
   };
 
@@ -196,66 +141,33 @@ Document.Prototype = function() {
     if (this.FORCE_TRANSACTIONS) {
       throw new Error('Use a transaction!');
     }
-    if (this.isTransacting) {
-      this.stage.delete(nodeId);
-    } else {
-      if (this.stage) {
-        this.stage.delete(nodeId);
-      }
-      this._delete(nodeId);
-    }
+    var node = this.get(nodeId);
+    var op = this._delete(nodeId);
+    this._notifyChangeListeners(new DocumentChange([op], {}, {}));
+    return node;
   };
 
   this.set = function(path, value) {
     if (this.FORCE_TRANSACTIONS) {
       throw new Error('Use a transaction!');
     }
-    if (this.isTransacting) {
-      return this.stage.set(path, value);
-    } else {
-      if (this.stage) {
-        this.stage.set(path, value);
-      }
-      return this._set(path, value);
-    }
+    var oldValue = this.get(path);
+    var op = this._set(path, value);
+    this._notifyChangeListeners(new DocumentChange([op], {}, {}));
+    return oldValue;
   };
 
   this.update = function(path, diff) {
     if (this.FORCE_TRANSACTIONS) {
       throw new Error('Use a transaction!');
     }
-    if (this.isTransacting) {
-      return this.stage.update(path, diff);
-    } else {
-      if (this.stage) {
-        this.stage.update(path, diff);
-      }
-      return this._update(path, diff);
-    }
-  };
-
-  this.canUndo = function() {
-    return this._session.canUndo();
-  };
-
-  this.undo = function() {
-    this._session.undo();
-  };
-
-  this.canRedo = function() {
-    return this._session.canRedo();
-  };
-
-  this.redo = function() {
-    this._session.redo();
+    var op = this._update(path, diff);
+    this._notifyChangeListeners(new DocumentChange([op], {}, {}));
+    return op;
   };
 
   this.getEventProxy = function(name) {
     return this.eventProxies[name];
-  };
-
-  this.isTransaction = function() {
-    return false;
   };
 
   this.newInstance = function() {
@@ -267,24 +179,6 @@ Document.Prototype = function() {
     var doc = this.newInstance();
     doc.loadSeed(data);
     return doc;
-  };
-
-  this.documentDidLoad = function() {
-    // HACK: need to reset the stage
-    this.stage.reset();
-    this.done = [];
-    // do not allow non-transactional changes after that
-    this.FORCE_TRANSACTIONS = true;
-  };
-
-  this.clear = function() {
-    var self = this;
-    this.transaction(function(tx) {
-      each(self.data.nodes, function(node) {
-        tx.delete(node.id);
-      });
-    });
-    this.documentDidLoad();
   };
 
   this.getDocumentMeta = function() {
@@ -306,31 +200,23 @@ Document.Prototype = function() {
         if (node) {
           node.setHighlighted(false);
         }
-      }, this);
+      }.bind(this));
     }
 
     each(highlights, function(nodeId) {
       var node = this.get(nodeId);
       node.setHighlighted(true);
-    }, this);
+    }.bind(this));
 
     this._highlights = highlights;
     this.emit('highlights:updated', highlights);
   };
 
-  this._apply = function(transaction, mode) {
-    if (mode !== 'saveTransaction') {
-      if (this.isTransacting) {
-        throw new Error('Can not replay a document change during transaction.');
-      }
-      // in case of playback we apply the change to the
-      // stage (i.e. transaction clone) to keep it updated on the fly
-      this.stage.apply(transaction);
-    }
+  this._apply = function(transaction) {
     each(transaction.ops, function(op) {
       this.data.apply(op);
       this.emit('operation:applied', op);
-    }, this);
+    }.bind(this));
   };
 
   this._notifyChangeListeners = function(transaction, info) {
@@ -341,7 +227,7 @@ Document.Prototype = function() {
   this._updateEventProxies = function(transaction, info) {
     each(this.eventProxies, function(proxy) {
       proxy.onDocumentChanged(transaction, info, this);
-    }, this);
+    }.bind(this));
   };
 };
 

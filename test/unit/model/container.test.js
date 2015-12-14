@@ -106,9 +106,7 @@ QUnit.test("Should return null if there is no next address", function(assert) {
   var next = container.getNextAddress([7,0]);
   assert.equal(next, null);
   // the last is a nested node
-  doc.transaction(function(tx) {
-    tx.get('main').hide('p5');
-  });
+  doc.get('main').hide('p5');
   var next = container.getNextAddress([6,0,1,2,0]);
   assert.equal(next, null);
 });
@@ -176,14 +174,13 @@ QUnit.test("Should return null if there is no previous address", function(assert
   var previous = container.getPreviousAddress([0,0]);
   assert.equal(previous, null);
   // the first is a nested node
-  doc.transaction(function(tx) {
-    tx.get('main').hide('p1');
-    tx.get('main').hide('p2');
-    tx.get('main').hide('sn1');
-    tx.get('main').hide('p3');
-    tx.get('main').hide('list1');
-    tx.get('main').hide('p4');
-  });
+  var main = doc.get('main');
+  main.hide('p1');
+  main.hide('p2');
+  main.hide('sn1');
+  main.hide('p3');
+  main.hide('list1');
+  main.hide('p4');
   var previous = container.getPreviousAddress([0,0,0,0,0]);
   assert.equal(previous, null);
 });

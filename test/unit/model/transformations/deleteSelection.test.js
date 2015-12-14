@@ -1,9 +1,10 @@
 "use strict";
 
 require('../../qunit_extensions');
-var sample1 = require('../../../fixtures/sample1');
-var containerSample = require('../../../fixtures/container_anno_sample');
 var deleteSelection = require('../../../../model/transform/deleteSelection');
+var DocumentSession = require('../../../../model/DocumentSession');
+var containerSample = require('../../../fixtures/container_anno_sample');
+var sample1 = require('../../../fixtures/sample1');
 
 QUnit.module('model/transform/deleteSelection');
 
@@ -117,17 +118,14 @@ QUnit.test("Deleting all", function(assert) {
 
 QUnit.test("Deleting partially", function(assert) {
   var doc = sample1();
-  var structuredNode;
-  doc.transaction(function(tx) {
-    structuredNode = tx.create({
-      id: "sn1",
-      type: "structured-node",
-      title: "0123456789",
-      body: "0123456789",
-      caption: "0123456789"
-    });
-    tx.get('main').show(structuredNode.id, 1);
+  var structuredNode = doc.create({
+    id: "sn1",
+    type: "structured-node",
+    title: "0123456789",
+    body: "0123456789",
+    caption: "0123456789"
   });
+  doc.get('main').show(structuredNode.id, 1);
   var sel = doc.createSelection({
     type: 'container',
     containerId: 'main',
