@@ -22,14 +22,19 @@ function DocumentationController(parent, params) {
     "switchState": this.switchState,
     "extendState": this.extendState,
     "switchContext": this.switchContext,
-    'focusNode': this.focusNode,
-    'tocEntrySelected': this.focusNode
+    'tocEntrySelected': this.tocEntrySelected
   });
 }
 
 DocumentationController.Prototype = function() {
 
   var _super = DocumentationController.super.prototype;
+
+  this.tocEntrySelected = function(nodeId) {
+    this.extendState({
+      nodeId: nodeId
+    });
+  };
 
   this._panelPropsFromState = function() {
     var props = omit(this.state, 'contextId');
@@ -44,10 +49,23 @@ DocumentationController.Prototype = function() {
     _super.setState.call(this, newState);
   };
 
-  this.focusNode = function(nodeId) {
-    this.extendState({
-      nodeId: nodeId
-    });
+  // HACK: For some reasons this.refs.contentPanel disappears after 2nd state update
+  // so we work around by caching this.refs.contentPanel.refs.scrollPane
+  this.didMount = function() {
+    if (!this.contentPanel && this.refs.contentPanel) {
+      this.contentPanel = this.refs.contentPanel;
+      this.contentPanelScrollPane = this.contentPanel.refs.scrollPane;
+    }
+
+    if (this.state.nodeId && this.state.contextId === 'toc') {
+      this.contentPanelScrollPane.scrollTo(this.state.nodeId);
+    }
+  };
+
+  this.didUpdateState = function() {
+    if (this.state.nodeId && this.state.contextId === 'toc') {
+      this.contentPanelScrollPane.scrollTo(this.state.nodeId);
+    }
   };
 
   this.getInitialContext = function() {
@@ -98,30 +116,6 @@ DocumentationController.Prototype = function() {
   this.restoreSelection = function() {
     var surface = this.getSurface('body');
     surface.rerenderDomSelection();
-  };
-
-  // Hande Writer state change updates
-  // --------------
-  //
-  // Here we update highlights
-
-  this.handleStateUpdate = function(newState) {
-    // var oldState = this.state;
-    var doc = this.getDocument();
-
-    function getActiveNodes(state) {
-      if (state.contextId === 'editSource') {
-        return [ state.nodeId ];
-      }
-      return [];
-    }
-
-    var activeAnnos = getActiveNodes(newState);
-    // HACK: updates the highlights when state
-    // transition has finished
-    setTimeout(function() {
-      doc.setHighlights(activeAnnos);
-    }, 0);
   };
 
 };
