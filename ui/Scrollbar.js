@@ -5,9 +5,37 @@ var Component = require('./Component');
 var $$ = Component.$$;
 var each = require('lodash/collection/each');
 
-// A rich scrollbar implementation that supports highlights
-// ----------------
-// 
+/**
+  A rich scrollbar implementation that supports highlights.
+
+  @class Scrollbar
+  @component
+
+  @prop {ui/ScrollPane} scrollPane scroll pane the scrollbar operates on
+  @prop {object} [highlights] hightlights grouped by scope
+
+  ```js
+  $$(Scrollbar, {
+    scrollPane: this,
+    highlights: {
+      'bib-items': ['bib-item-citation-1', 'bib-item-citation-2']
+    }
+  }).ref('scrollbar')
+  ```
+
+  Usually
+  instantiated by {@link ScrollPane}, so you will likely not create it
+  yourself. However, it's likely that you want to update the highlights
+  in the scrollbar, which works like this:
+
+  ```js
+  this.scrollbar.extendState({
+    highlights: {
+      'figures': ['figure-1', 'figure-citation-1']
+    }
+  });
+  ```
+*/
 
 function Scrollbar() {
   Component.apply(this, arguments);
@@ -143,10 +171,6 @@ Scrollbar.Prototype = function() {
   };
 
   // Handle Mouse Up
-  // -----------------
-  //
-  // Mouse lifted, nothis.panelContentEl scroll anymore
-
   this.onMouseUp = function() {
     this._mouseDown = false;
     $(window).off('mousemove', this.onMouseMove);
@@ -161,14 +185,14 @@ Scrollbar.Prototype = function() {
 
   this.onMouseMove = function(e) {
     if (this._mouseDown) {
-      var panel = this.props.panel;
-      var panelContentEl = panel.getPanelContentElement();
+      var scrollPane = this.props.scrollPane;
+      var scrollableEl = scrollPane.getScrollableElement();
       var scrollBarOffset = this.$el.offset().top;
       var y = e.pageY - scrollBarOffset;
 
       // find offset to visible-area.top
       var scroll = (y-this.offset)*this.factor;
-      this.scrollTop = $(panelContentEl).scrollTop(scroll);
+      this.scrollTop = $(scrollableEl).scrollTop(scroll);
     }
   };
 };

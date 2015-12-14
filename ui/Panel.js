@@ -38,13 +38,13 @@ Panel.Prototype = function() {
         var node = doc.get(nodeId);
         // Node could have been deleted in the meanwhile
         if (node) {
-          node.setHighlighted(false);
+          node.setHighlighted(false, scope);
         }
       }.bind(this));
 
       each(toBeAdded, function(nodeId) {
         var node = doc.get(nodeId);
-        node.setHighlighted(true);
+        node.setHighlighted(true, scope);
       }.bind(this));
     }.bind(this));
 
