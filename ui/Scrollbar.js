@@ -12,8 +12,9 @@ var each = require('lodash/collection/each');
   @component
 
   @prop {ui/ScrollPane} scrollPane scroll pane the scrollbar operates on
-  @prop {object} [highlights] hightlights grouped by scope
+  @prop {object} highlights hightlights grouped by scope
 
+  @example
   ```js
   $$(Scrollbar, {
     scrollPane: this,
